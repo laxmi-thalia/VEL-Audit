@@ -240,3 +240,24 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   Result: B_ 93.75cr vs 2B_ 78.81cr, D_ 14.94cr (= not-in-2B documents + matched-doc differences).
   Deliverable also exported as `.xlsb` (COM SaveAs FileFormat=50; ~40s; 52MB -> 24MB) - the .xlsx stays the
   working copy (openpyxl cannot write xlsb); re-export after every change.
+
+## Changes log - 2026-09-18 (night): revised FY 26-27 2B, GL Key, Tax comp Reasons (Pawan)
+
+- **2B re-merge (b2_remerge_2627.py):** revised file `Audit data of FY 2026-27\GSTR-2B` is FY 26-27 only (Apr-Aug 26,
+  3,737 rows, 16 GSTINs); FY 25-26 state files unchanged. 2B sheet now rows 3..13869 (was ..12127); 293,933 dependent
+  formulas re-bounded. Chain after an openpyxl save: strip_orphan_pivots.py -> readd_buttons2.py -> cascade_fix.py ->
+  final_countif_rule.py (the FINAL Countif rule, saved as a script; the 2B bound is read from the sheet). Not-in-2B
+  8,205 -> 8,172 only: TN/TG/WB/KL/HR still have no FY 25-26 Octa export. Verified: 0 error cells, golden
+  1,06,98,71,702.15, B_ 93,75,28,722.19 = ITC-category tax, 2B_ 78.85cr, Net-ITC check 0.00.
+- **Tax comp report Reasons (tcr_comp_extract2.py + tcr_reasons_lib.py + tcr_reasons.py):** FACT: the sheet's 3B column
+  equals filed 4A(4)+4A(5)-4D(1) in all 204 rows (the header text says -4B(2); not changed - flagged to Pawan). The CA's
+  Computation New (PART A) method: filed 4A5 = '2B current month ITC as per portal' (net of CN) + reclaim + permanent
+  reversal; 4D1 = reclaim + permanent reversal; 4B2 = carry-forward; 4B1 = permanent reversal. So every rupee of
+  3B-vs-2B difference is one of: 4D1 deviation (S-U, 'Add to 4D1'), portal-2B vs working-2B (V-X, or AB-AD when it is
+  the CN netted in 4A5), ISD / other 4A5 deviation (Y-AA), amounts reported in both 4A5 and 4D1 beyond the working or
+  in neither (net off, text only). Extractor anchors value columns on the nearest IGST/CGST/SGST header row; the J&K
+  sheet is 'Computation New ' (trailing space) - regex the name. Result: 166 Matched, 30 explained (0 residual), 8 MP
+  months 'no working file' -> Pending. Impact 'Ignore' only for CN-netting / reconciliation-tied items; unexplained
+  4A5/2B deviations are 'Pending' with both figures cited. Last-year vocabulary reused (Matched / Not reported in 4D(1)
+  / Not reported in 4D(1)-Negative / Mismatch in 2B amounts / CN netted in 4A(5) / Not reported in 4A(5)-Negative).
+  AE-AG (sheet formula, excludes AB) totals 42.8L IGST = MP's unexplained months + the 2 CN rows.

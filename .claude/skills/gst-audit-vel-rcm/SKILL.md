@@ -189,3 +189,23 @@ sync scripts. If a change alters numbers, it must reproduce the goldens first.
 - INDEX buttons: every sheet's row 1 forced to 21pt before placing the shape (rebuilt sheets
   had 14.4pt -> button spilled into row 2); hidden CC Master / TB Groupings got a reserved
   row 1 too (30k dependent lookups shifted).
+
+## Changes log - 2026-09-18 (night): RCM GL rebuilt on Posting Date | Document Number (Pawan)
+
+- New GL folder `Clients Data/GLs/RCM`: 4 FBL3N dumps (sheet Data, header row 6, G/L Account per row): Output FY 25-26
+  (8,620), Output FY 24-25 (7,460), Output open items Apr-Jun 26 (971), Input 1.4.25-31.7.26 (17,038). 1,239 of 7,231
+  document numbers recur across fiscal years -> **GL Key = TEXT(Posting Date,"yyyymmdd")&"|"&Document Number** on both
+  RCM GL and RCM Register (rcm_gl_rebuild.py, COM only). Posting FY from Posting Date (102 docs dated 24-25 post in 25-26).
+- **Register date defect found & fixed:** the 3,142 Conso-sourced rows carried Posting/Document/Inv. Date as 18:30 of the
+  previous day (IST-midnight-in-UTC from the original build); normalised to midnight (2 posting dates changed month).
+  Raw key match was 361/3,503; after the fix 3,502/3,503 (Found in Output GL) and 3,501 have the RCM input debit in the
+  SAME SAP document (Found in Input GL (GL Key)).
+- **Register conventions (verified):** Conso rows carry ONE line per document for CGST/SGST, labelled 2610080300 or
+  2610080300-01, amount = the CGST leg (SGST equal, implied); monthly-working rows carry separate 300/301 lines.
+  GL-side expected amount: leg 300 -> lines 300 + 300-01; 301 -> line 301 if present else mirror of the CGST leg;
+  302 -> line 302. Register-side compares the GL leg with the SUM of its own lines of the same key + label.
+- Result: 0 error cells; register amount-differs = the 4 doubled Conso documents (e.g. GL -49,500 vs register -99,000)
+  + 3 others; GL side: 634 FY 25-26 output credit lines NOT IN RCM REGISTER (client gap, ties to the Statewise -12.75L /
+  MP July), 2,065 debit (payment) lines, 7,440 FY 24-25, 971 FY 26-27 open items. Statewise RCM vs 3B unchanged.
+- TRAP: delete/recreate the GL sheet BEFORE writing register formulas that reference it (a delete turns them into #REF!).
+  'Found in Input GL (post-ITC)' / 'Input GL Remarks' keep their claim-month semantics - GL-key columns were added.
