@@ -60,8 +60,72 @@ for i, r in enumerate(rows):
     if not GST.match(vg): verdict[i] = "No vendor GSTIN (URD/ISD/RCM-self)"; continue
     c = by_z.get(vg + zkey(g(r, "Invoice No.")))
     if c: key2[i] = b2key[c[0]]; exact_owned.add(c[0]); verdict[i] = "Matched (invoice no)"
-# ---------------- pass 2: fallbacks - unowned docs only, once each, same FY
+# ---------------- pass 2a (Pawan 18-09): DOCUMENT-level fallbacks - the client splits an invoice over several register lines
+# and books it under a suffixed/prefixed number (GZ/04/24-25 vs 2B GZ/04; 3/GZ/03 vs GZ/03), so line-level rules never tie.
+# Register document = (vendor, zero-insensitive invoice); 2B document = (vendor, zero-insensitive doc no), unowned by pass 1.
+# (a) document amount: register document tax == 2B document tax (<1), same vendor, same invoice FY, exactly one candidate;
+# (b) containment: one number contains the other (>= 3 chars), same vendor + FY, exactly one candidate. Each 2B document once.
 fb_used = set()
+b2doc = {}
+for j, r in enumerate(B):
+    vg = S(bg(r, "Supplier GSTIN")).upper()
+    if not vg or j in exact_owned: continue
+    dk = (vg, zkey(bg(r, "Doc No"))); d = b2doc.setdefault(dk, {"tot": 0.0, "fy": b2fy[j], "rows": []})
+    d["tot"] += round(num(bg(r, "IGST (Net)")) + num(bg(r, "CGST (Net)")) + num(bg(r, "SGST (Net)")), 2); d["rows"].append(j)
+b2_by_vendor = collections.defaultdict(list)
+for dk in b2doc: b2_by_vendor[dk[0]].append(dk)
+regdoc = collections.defaultdict(lambda: {"tot": 0.0, "fy": "", "lines": []})
+for i, r in enumerate(rows):
+    if verdict[i] or g(r, "Category") != "ITC": continue
+    vg = S(g(r, "Vendor GSTIN")).upper(); dk = (vg, zkey(g(r, "Invoice No.")))
+    regdoc[dk]["tot"] += round(num(g(r, "IGST")) + num(g(r, "CGST")) + num(g(r, "SGST")), 2); regdoc[dk]["fy"] = fy_of_label(g(r, "Invoice Year"), g(r, "Invoice Date")); regdoc[dk]["lines"].append(i)
+# Layers per Pawan's ITC-vs-2B reco script (18-09, "not too aggressive"): same recipient GSTIN, tolerance +/-100 on the
+# document total (TOL_ABS), one candidate only. (2) GSTIN + amount; (3) invoice similar + amount, where 'similar' =
+# core-normalised numbers (INV/INVOICE and a trailing FY like /24-25 stripped) contain each other, or the script's
+# prefix/tail gate (same prefix before the first separator, numeric tail within edit distance 2). No PAN / cross-state layers.
+TOL_ABS = 100.0
+def inv_core(s):
+    s = S(s).upper(); s = re.sub(r"\bINVOICE\b|\bINV\b", "", s); s = re.sub(r"[/\-\s]?\d{2}[-/]\d{2}\s*$", "", s); return re.sub(r"[^A-Z0-9]", "", s)
+def inv_gate(a, b):
+    A, B = S(a).upper(), S(b).upper()
+    if not A or not B or abs(len(A) - len(B)) > 3: return False
+    def split(s):
+        for sep in ("/", "-", " "):
+            if sep in s: i = s.index(sep); return s[:i], s[i + 1:]
+        return s, ""
+    pa, ta = split(A); pb, tb = split(B)
+    if pa != pb: return False
+    if ta.isdigit() and tb.isdigit():
+        prev = list(range(len(tb) + 1))
+        for x in range(1, len(ta) + 1):
+            cur = [x]
+            for y in range(1, len(tb) + 1): cur.append(min(prev[y] + 1, cur[y - 1] + 1, prev[y - 1] + (ta[x - 1] != tb[y - 1])))
+            prev = cur
+        return prev[-1] <= 2
+    return False
+b2rcpt = {}
+for j, r in enumerate(B): b2rcpt.setdefault((S(bg(r, "Supplier GSTIN")).upper(), zkey(bg(r, "Doc No"))), S(bg(r, "Company GSTIN")).upper())
+b2raw = {}
+for j, r in enumerate(B): b2raw.setdefault((S(bg(r, "Supplier GSTIN")).upper(), zkey(bg(r, "Doc No"))), S(bg(r, "Doc No")))
+regrcpt = {}; regraw = {}
+for i, r in enumerate(rows):
+    dk = (S(g(r, "Vendor GSTIN")).upper(), zkey(g(r, "Invoice No."))); regrcpt.setdefault(dk, S(g(r, "VEL GSTIN")).upper()); regraw.setdefault(dk, S(g(r, "Invoice No.")))
+used_docs = set(); n_amt = n_inv = 0
+for (vg, inv), d in regdoc.items():
+    if not d["tot"]: continue
+    cands = [dk for dk in b2_by_vendor.get(vg, []) if dk not in used_docs and (not d["fy"] or b2doc[dk]["fy"] == d["fy"])
+             and b2rcpt.get(dk) == regrcpt.get((vg, inv)) and abs(b2doc[dk]["tot"] - d["tot"]) <= TOL_ABS]
+    if not cands: continue
+    ri = regraw[(vg, inv)]; rc = inv_core(ri)
+    sim = [dk for dk in cands if (len(rc) >= 3 and len(inv_core(b2raw[dk])) >= 3 and (rc in inv_core(b2raw[dk]) or inv_core(b2raw[dk]) in rc)) or inv_gate(ri, b2raw[dk])]
+    if len(sim) == 1: pick, why = sim[0], "Matched (invoice similar + amount within 100) - invoice no differs, review"
+    elif len(cands) == 1: pick, why = cands[0], "Matched (GSTIN + amount within 100) - invoice no differs, review"
+    else: continue
+    used_docs.add(pick); j0 = b2doc[pick]["rows"][0]; fb_used.update(b2doc[pick]["rows"])
+    for i in d["lines"]: key2[i] = b2key[j0]; verdict[i] = why
+    n_inv += why.startswith("Matched (invoice similar"); n_amt += why.startswith("Matched (GSTIN + amount")
+print("pass 2a document-level fallbacks (same recipient, +/-100, single candidate): invoice-similar+amount %d docs, GSTIN+amount %d docs" % (n_inv, n_amt))
+# ---------------- pass 2b: line-level fallbacks - unowned docs only, once each, same FY
 for i, r in enumerate(rows):
     if verdict[i]: continue
     vg = S(g(r, "Vendor GSTIN")).upper(); tot = round(num(g(r, "IGST")) + num(g(r, "CGST")) + num(g(r, "SGST")), 2); d = g(r, "Invoice Date")
@@ -70,7 +134,7 @@ for i, r in enumerate(rows):
     c = [j for j in (by_dt.get((vg, d.date(), tot)) if isinstance(d, dt.datetime) else []) or [] if ok(j)]
     if c: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched (date+amount) - invoice no differs, review"; continue
     c = [j for j in by_amt.get((vg, tot), []) if ok(j)]
-    if tot and c and len(c) <= 3: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched (amount, <=3 candidates) - invoice no differs, review"; continue
+    if tot and len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched (amount, single candidate) - invoice no differs, review"; continue
     # pass 3: FY 24-25 2B (working files)
     if o_z.get(vg + zkey(g(r, "Invoice No."))) or (isinstance(d, dt.datetime) and o_dt.get((vg, d.date(), tot))):
         verdict[i] = "Matched in FY 24-25 2B (working files) - 6A1 component 1"; key2[i] = "PY:" + vg + norm(g(r, "Invoice No.")); continue
