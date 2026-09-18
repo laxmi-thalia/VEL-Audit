@@ -8,6 +8,7 @@ pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible
 def put(ws):
     for s in list(ws.Shapes):
         if s.Name == "btnIndex": s.Delete()
+    ws.Rows(1).RowHeight = 21
     s = ws.Shapes.AddShape(5, 2.0, 2.0, 86.0, 17.0); s.Name = "btnIndex"
     s.Fill.ForeColor.RGB = 0x794E1F; s.Line.Visible = False; s.Placement = 2
     t = s.TextFrame2.TextRange; t.Text = "<< INDEX"; t.Font.Bold = True; t.Font.Size = 9; t.Font.Fill.ForeColor.RGB = 0xFFFFFF

@@ -122,7 +122,7 @@ try:
     rg = wbx.Worksheets("ITC Register 2025-26")
     col = lambda h: RH[h]
     rg.Range(rg.Cells(6, col("KEY2 (matched 2B key)")), rg.Cells(5 + N, col("KEY2 (matched 2B key)"))).Value = [[v] for v in key2]
-    rg.Range(rg.Cells(6, col("Countif (Consider / Not consider)")), rg.Cells(5 + N, col("Countif (Consider / Not consider)"))).Value = [[v] for v in labels]
+    rg.Range(rg.Cells(6, col("Countif")), rg.Cells(5 + N, col("Countif"))).Value = [[v] for v in labels]
     rg.Range(rg.Cells(6, col("Reco Remarks")), rg.Cells(5 + N, col("Reco Remarks"))).Value = [[v] for v in verdict]
     rg.Range(rg.Cells(6, col("Considered in Table 6A1")), rg.Cells(5 + N, col("Considered in Table 6A1"))).Value = [[v] for v in six]
     rg.Range(rg.Cells(6, col("Remarks for accounting entries- For 6A1")), rg.Cells(5 + N, col("Remarks for accounting entries- For 6A1"))).Value = [[v] for v in sixrem]
