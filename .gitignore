@@ -1,0 +1,21 @@
+# ---- engagement-local: client figures / meeting content never leave the machine ----
+vel/contracts/goldens_*.md
+vel/reference/salesreco_dump.json
+vel/reference/ly_itc_formulas_fy2425.txt
+vel/reference/transcripts/
+.claude/skills/gst-audit/references/amar-*.md
+# CGST Act text mirror (large, regenerable) - same exclusion as the accountic repo
+.claude/skills/gst-audit/references/gst-manual/
+# ---- client files / build artefacts ----
+*.xlsx
+*.xlsb
+*.xls
+*.pkl
+*.wav
+*.mp4
+*.mp3
+*.jsonl
+__pycache__/
+*.pyc
+.venv/
+scratch/

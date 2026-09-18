@@ -1,0 +1,205 @@
+---
+name: gst-audit-vel-itc
+description: VEL (Vikran Engineering) GSTR-9/9C annual-return audit — ITC phase. The complete recipe for the ITC Register, the cumulative 2B merge/matching, the four ordered checklist steps, the unclaimed-ITC October list, and the RCM post-ITC hooks, all inside VEL_GST_Audit_FY2025-26_MASTER.xlsx. Use for any work on the VEL ITC sheets or the FY 26-27 ITC roll-forward. Siblings: gst-audit-vel-sales, gst-audit-vel-rcm.
+---
+
+# VEL GST audit — ITC phase
+
+Same engagement/master as the sales and RCM skills — **their Standing rules all apply**
+(formulas-only, no LLM without asking, file-lock etiquette, verify-before-reporting,
+re-snapshot before edits, user edits win).
+
+Engine home: `c:\PROJECTS\accountic\gst-audit-engine\vel\`
+- `contracts/itc-sources.md` — **read first**: every source with structure + traps.
+- `contracts/goldens_fy2526_itc.md` — backtest targets (gitignored; no client figures here).
+- `contracts/formats.md` / `reference/formats.json` — layout authority (regenerate on change).
+- `scripts/` — itc0_extract/itc0_build (register), b2itc_merge (2B), itc1_match /
+  itc1_apply / itc1_apportion / itc1b_fallback (invoice-level reco + ISD/fallback),
+  b3itc_extract / itc2_build (vs 3B Net ITC), itc4_prep / itc4_build (GSTIN level +
+  October list), rcm_postitc (the RCM hooks).
+
+## The design in one paragraph
+
+The register (41,508 rows, last year's 83-col layout) holds every FY 25-26 claim with its
+3B month. The cumulative 2B (48k+ rows, FY 2020-21 onward) is the matching universe: an
+invoice-level cascade — (vendor GSTIN, normalized invoice) → (vendor, date, tax) →
+(vendor, tax, ≤3 candidates) — derives, for every 2B row, whether and when it was claimed
+(the client's own claim marking exists only for Bihar/TN). From that one matching pass
+fall out: step 1's data-accuracy columns (correct invoice/date/GSTIN, 2B period), the
+B_/2B_/D_ value blocks (2B doc totals apportioned across register lines), the GSTIN-level
+"Less in 2B" view, and the unclaimed-candidates October list (filtered against last year's
+8,227 claim keys). The vs-3B step computes Net ITC = 4A + 4B-as-reported and ties the
+register month-by-month.
+
+## What was built (sheets in the master)
+
+- `ITC Register 2025-26` — 84 cols (83 + GST CREDIT YES/NO etc appended). Live: Total GST,
+  POS block (step 3 live from birth), KEY, B_ block, D_ diffs. Stamped: match verdicts,
+  2B_ apportioned values, correct-invoice block, Countif (live COUNTIF over 41k rows =
+  O(n²) recalc — deliberately stamped, regenerate on data change).
+- `GSTR-2B ITC Data` — the merged cumulative 2B + derived "Claimed in FY 25-26 register?" +
+  claim month; fallback rows source-tagged. `2B ISD Data` — the ISD section.
+- `ITCR vs 3B Net ITC` — 228 GSTIN-months live both sides. FY 25-26 RESULT: register
+  claims vs 3B Net ITC differ by ~1.5L for the whole year (near-perfect).
+- `ITCR vs 2B GSTN Level` — per GSTIN live: claimed vs 2B available, diff ("Less in 2B"),
+  unclaimed-in-2B column, DPS Remarks.
+- `Unclaimed ITC candidates` — THE OCTOBER LIST: FY 25-26 2B credits unclaimed in the
+  register (claimable till Nov 2026, Sec 16(4)) + FY 24-25 rows unclaimed in either
+  register. Standing caveat printed on-sheet: FY 26-27 Apr-Jul claims not yet netted.
+- `RCM Paid vs ITC Claimed` — RCM output paid (month M) vs 4A(3) claimed (M and M+1) vs
+  ITC-register RCM claims; VEL claims RCM ITC ONE MONTH BEHIND payment; Mar-26 spills to
+  FY 26-27. RCM register + RCM GL input columns stamped from the same claims.
+
+## CA/Pawan rulings (changes log — append every new one)
+
+- Register source = ITC All State `Working`; drop "Others"; missing data fetched from
+  monthly workings with a flag first.
+- 2B source = the `GSTR 2B` sheets INSIDE the July FY 26-27 state working files (user
+  note), July = latest cut.
+- Checklist order = the `Steps` column; each step's inputs = `File to be used` column.
+- Countif stamped, not live (performance); 2B_ apportioned per last year's semantics.
+- Claim months for 13 states DERIVED by matching (client marking absent) — Bihar/TN
+  markings kept as cross-check only.
+
+## Traps (do not relearn)
+
+- Working sheet stores AMOUNTS AS TEXT — coerce everything; a text-number column sums to
+  zero silently in a values-only survey.
+- **COM auto-coerces month-like strings ("Apr-25", "02 May 2025") to DATES** on write —
+  criterion cells then never match text; set NumberFormat "@" before writing tokens.
+- pd.NaT IS a datetime instance — guard `v is pd.NaT` FIRST, before isinstance checks.
+- 4B reversals negative as reported (Net = 4A + 4B); 4(C) is a header-only row.
+- F.Y column half-blank — derive FY from `2B Return Period`.
+- 2B invoice numbers carry leading apostrophes; normalize alphanumerics-only, uppercase.
+- Four state-name spellings across files — canonicalize to GSTIN on ingestion, always.
+- 3B Data's added columns have headers on ROW 1 (reserved row) vs originals on row 2 —
+  resolve headers by scanning BOTH rows (cosmetic cleanup pending).
+- A cumulative 2B's unmatched old-FY rows are NOT "unclaimed" — they were claimed in
+  prior years' registers; judge only after netting adjacent-year claims.
+- Register lines are line-level, 2B is doc-level — many-to-one is normal, not a defect.
+
+## Missing data / open flags (keep current)
+
+- FY 26-27 Apr-Jul claims not netted from the candidates list (the one refinement before
+  the client acts on it).
+- Arunachal/J&K/Kerala: no 2B sheet in workings (fallback = FY 25-26 window only; their
+  FY 24-25 2B history unavailable). Haryana: no folder in FY 26-27 Final at all.
+- 617 register rows blank GST-CREDIT flag; 523 blank 2B-periods; `Type for GSTR9` empty.
+- 28 ISD rows (~5.8L) still unmatched; ~11.75cr register claims with no 2B counterpart
+  (UP 5.25cr, MP 1.92cr, Chh 1.53cr leading) — CA review via Invoice Level Match filter.
+- Receivables open items (42,429 rows) pending review (Sr 58/59) — no vendor columns.
+- 37 unordered checkpoints (Sr 27-65 minus ordered) — many answerable from built data
+  (8A recon, Table 6A1, TDS, high-risk states, Bird's eye view...), several inquiry-type.
+- RCM register judgment columns still pending: ITC Eligibility (mine last year's
+  nature→Y/N as tagged proposals), GL Correct (semantic pairs).
+
+## Tax Comparison Report (built 2026-08-28)
+
+`Tax comp report` sheet: merged `ITC (Other than IMPG)` from the portal
+`Portal Reports\Tax Comparison Reports\2025-26_<GSTIN>_Tax liability and ITC comparison.xlsx`
+files - VEL PAN (AAECR0503Q) only, subsidiary files excluded; month rows only; columns till
+the Shortfall block (cumulative blocks dropped - user ruling). Two-tier header like last
+year's. Source sheets in each file: Tax Liability Summary / Comparison Summary /
+Tax liability / Reverse charge / Export and SEZ / ITC (Other than IMPG) / ITC (IMPG) /
+RCM_LIABILITY_ITC (data rows start row 7, months as 'Apr-25').
+FLAG: **TCR files missing for Haryana AND Andhra Pradesh.**
+Bird's eye view (Sr 40): BUILT as standalone file 'Birds Eye View VEL GSTR 3B FY25-26.xlsx' (template: FY 2024-25/1. Corporate Clients/TP EV/Birds Eye View/...New Formula.xlsx - 18 state sheets of the Octa matrix + PAN consolidated + live Liability Summary; script bev_build.py). TRAP: never copy style-dump number formats truncated - invalid codes make Excel refuse the whole workbook; snapshot before any style-replica build.
+
+## Year-roll & maintenance
+
+Template-copy → survey vs contracts → rulings → rebuild → backtest against
+`goldens_fy2526_itc.md` to the rupee → gauntlet. Append rulings + flags here after every
+session; regenerate formats.md; sync scripts.
+
+## Changes log - 2026-09-17/18: ITC Batch 1 ("till 6A1") per Rashid/Purvi + Priyesh meetings
+
+Transcripts (Downloads): `Meeting with rashid faisal-20260917_103824UTC - Transcript (English).md`,
+`GST Audit -Vikran-20260917_121606UTC - Transcript (English).md`; plan `VEL ITC Reporting Layer - Plan v2.docx`.
+Built on `VEL_GST_Audit_FY2025-26_MASTER (2).xlsx`; scripts b2_octa_merge / itc_batch1_register / itc_batch1_stepC / itc_batch1_stepD.
+- **2B source = Octa exports in `DPS Workings\Portal Reports\GSTR-2B\`** (14 state files Apr-25..Mar-26 +
+  all-states FY 26-27 file), merged as `GSTR-2B Apr25-Aug26` (raw 45 cols verbatim, DPS cols LAST) +
+  `2B ISD Apr25-Aug26`. Window ruling (Pawan/Priyesh): Apr-25 -> Aug-26; the FY 26-27 export currently
+  holds Apr..Jul-26 only. FLAGS: no FY 25-26 file for TN, TG, WB, HR; Kerala file empty (non-Net export).
+- **Register (75 cols now)**: removed Category as per 3B, Invoice Level Match (text -> single `Reco
+  Remarks` after D_Total), Review Remarks, RCM Paid Month/Remarks/Remarks 2/Comments, POS Query
+  Description, Query; added `PO Number`. KEY = UPPER(SUBSTITUTE chain) of vendor GSTIN & invoice (same
+  normalisation as the 2B KEY formula). `Countif` = Consider/NA STAMPED (first line per matched 2B doc;
+  live running COUNTIF over 41k rows is O(n^2)). **B_ block = SUMIFS over the register by KEY2 on Consider
+  lines; 2B_ block = SUMIFS over the 2B sheet by KEY2** (both CAs: one 2B doc across several register
+  lines -> total on one line, NA on the rest). KEY2 = the 2B key the cascade matched (stamped). "As per
+  2B" cols = INDEX/MATCH into the 2B sheet. POS Check TRUE/blank + POS Query text. Expense GL Element /
+  PO Number = INDEX/MATCH into hidden `ZFI06 Data` by Document Number; Expense Description from `TB
+  Groupings` by GL code.
+- **Cascade re-run** vs the Octa 2B: 30,945 by invoice no, 100 date+amount, 175 amount(<=3), 8,734 not
+  found, 472 no vendor GSTIN; **1,082 rows match only the FY 24-25 2B** (old `GSTR-2B ITC Data`, working-
+  file basis) = 6A1 component 1; verdict text carries the source.
+- **2B sheet vice-versa (live)**: 3B Claim Month + Reco Remarks by KEY2 from the register; 6A1 mark; Table
+  8A (Octa's `GSTR-9 (8A) ITC Available` + FY + RCM/amendment); 8A Reco; Table 8C (25-26 dated in 26-27
+  2B); Table 13; Final Remarks; GSTR-9/9C. Permanent Reversals / Reclaim 6H / Query amber for CA.
+- `Unclaimed ITC candidates` REMOVED (Rashid: it is 6A1-unclaimed). `ITCR vs 3B Net ITC` rebuilt SPLIT
+  RCM (4A3) / ISD (4A4) / Other (4A5+4B): ties 2.05cr/11.18cr/93.75cr; net diff 154,184.32 (golden);
+  only Arunachal Oct-25 (+62,100) and WB Dec-25 (+92,056) exceed Rs 5,000.
+- **`T6A1 Extract - 24-25`** (last year's 19 cols + helper): 3,579 rows = 1,082 (24-25 inv in 24-25 2B
+  availed 25-26) + 2,029 correction entries (24-25 dated, in no 2B) + 179 claimed + 275 unclaimed (24-25
+  dated in 25-26 2B) + 14 RCM Mar-25->Apr-25 (RCM register fiscal 2024/12). GSTR-9 Remarks LIVE (links to
+  the source sheet's mark); amounts values (regenerate by script); PivotTable PT_6A1 (State x Remarks).
+  Register `Considered in Table 6A1` = Yes + `Remarks for accounting entries` tag on 3,111 rows (proposals).
+- TRAPS: ITC register `3B Claim  Month` is the LABEL coerced to a date - May = 02-May-2025, Jun = 03-Jun..
+  (day = month index); month helpers must replicate that or SUMIFS reads zero for 11 months. ZFI06 as
+  supplied covers only 1,717 documents (KH type, 85% BR/UP) -> 108 register rows get Expense GL/PO;
+  ask client for a full-year all-documents ZFI06 run or approve the Reference+Vendor GSTIN key.
+- Deferred by CAs: Eligibility, Material Description, Query, Table 12; batch 2 = ITC Summary (gross-4A5
+  auto-populate column blank), Table 13 & 6A1 (Table 13 from FY 24-25 filed GSTR-9), T12B/T12C, 8C vs
+  13-12, Tax comp reasons (Computation sheet vs filed 3B, rule-based, no LLM).
+
+## Changes log - 2026-09-18: ITC Batch 2 step E (ITC Summary + Table 13/12C sheets)
+
+Scripts: itc_batch2_stepE.py (+ zip_bisect.py diagnostic). Built on MASTER (2), verified 0 error cells.
+- Last year's formula logic replicated exactly (read via COM from a LOCAL copy of the xlsb - COM cannot open
+  UNC paths): every 6A1 block = SUMIFS over `T6A1 Extract - 24-25` (My GSTIN col I, GSTR-9 Remarks col G,
+  P/Q/R); 6B = 4A5 - 6H - 6A1 + RCM6A1; 6D = 4A3 - RCM6A1; 6G = 4A4; 6H = 4D1 - claimed(PY 2B) - correction;
+  6J = 6A - (6A1+6B+6D+6G+6H); 7H = -(4B1+4B2) (Octa negative); 7J = 6B+6D+6G+6H-7H; Difference = 7J - Net3B
+  + 6A1 (closes to 0.00 in all 19 states = the consistency check); 8A from 2B `Table 8A`="Yes" until the
+  system-generated GSTR-9; 8B = 6B; 8C from 2B "Table 8C of GSTR-9"; 8D = 8A-8B-8C; "As per Tax Comparison
+  Report" = SUMIF of Tax comp cols AE:AG by GSTIN; reasons blocks = SUMIF of V:X / Y:AA / AB:AD.
+- Table 13 / 12C of FY 24-25 = hidden `LY 24-25 claims` (last year's `ITC Register 2025-26` sheet, 23,649
+  rows; 9_Reporting=13 -> 8.03cr, 9C_Reporting=12C -> 3.96cr). Tie to filed PDFs when all 19 arrive.
+- Register `GSTR 9C_Reporting` (12B if Invoice Year ends "24-25", NA if "25-26" - the column holds BOTH
+  "2025-26" and "25-26" formats), `Reasons`, `Matching of 12B..12C` (COUNTIFS into LY KEY) - live.
+- FINDINGS: 12B (CY) 8.20cr vs 12C (PY) 3.96cr - 1,701 of 4,699 rows not in last year's 12C list (CA);
+  8D negative (-1.8cr IGST) because TN/TG/WB/HR have no FY 25-26 2B file (8A understated).
+- **TRAP (cost an hour): Excel REFUSES TO OPEN (Open method failed, even CorruptLoad) a workbook holding a
+  formula with a string literal > 255 chars.** openpyxl writes it happily. Split long note text into <=200-
+  char chunks joined with & (last year's CONCATENATE did exactly that). Diagnose with zip-level sheet
+  removal (zip_bisect.py: seconds per trial) - NOT openpyxl round-trips (5 min each, and they drop the
+  T6A1 PivotTable body -> re-create PT_6A1 via COM after any openpyxl save).
+- COM `.Address` is a property (not callable) via dynamic dispatch - compute letters with openpyxl L().
+- Step F (Tax comp reasons: state `Computation` sheet vs filed 3B, rule-based) pending - share down.
+
+## Changes log - 2026-09-18: last year's ITC sheets replicated formula-for-formula (Pawan ruling)
+
+Ruling: "refer previous year's 9C (ITC Summary / ITC Register 24-25 / ITC Register 25-26 / Tax comp report /
+T6A1 Extract 23-24 / Table 13 & 6A1) - how each formula was made - copy the exact format, rename sheets to the
+new year, build it." Method: `ly_dump.py` dumps every header/style/width/merge + row-5 formula of the six sheets
+from a LOCAL copy of the xlsb via COM -> `ly_itc_dump.pkl/.txt` (reference/). Then:
+- `replica_itc.py` = layouts/headers/fills/number formats/widths/merges (last year's row n -> our row n+1, row 1
+  reserved), year strings rolled (23-24->24-25, 24-25->25-26, 25-26->26-27 in labels only).
+- `replica_formulas.py` = the formulas, written EXPLICITLY per column (regex-rolling last year's formula text
+  mangled references: rolled sheet names became [1] external links, '$C5' stayed on row 5, the 2B column map was
+  applied twice). Sheet mapping: Consolidated GSTR-3B Extract -> 3B Data (GSTIN x month, SUMIFS by GSTIN = the
+  FY); GSTR-2B Apr 24-Oct 25 -> GSTR-2B Apr25-Aug26; T6A1 Extract - 23-24 -> - 24-25; ITC Register 2024-25 ->
+  2025-26; ITC Register 2025-26 (= NEXT-YEAR claims sheet, Table 13/12C detail) -> NEW `ITC Register 2026-27`
+  (49 cols, last year's layout; rows = FY 25-26 invoices in the FY 26-27 2B until the client's FY 26-27 working).
+- ITC Summary now 129 cols exactly as last year: 6A(blank per Priyesh) | 6A1 x5 | 6B..6J | 7H | 7J | Net3B |
+  Diff | 8A (from 2B until system GSTR-9) | 8B | 8C | 8D | TCR | reasons | T12 Unclaimed | T13 | T13-T12 | 12A |
+  12B | 12C | 12D | 12E | 12F | Reasons/Net diff/Comment (9C note text, chunked) | Add to 4D1 | amended | adj.
+  Last year's hard plug "-11650" in CN dropped (no plugs). 7H = -(4B1+4B2) because Octa reports 4B negative.
+- FY 25-26 RESULTS: Total 6A1 9.66cr (V); 6B 99.76cr; 7J 97.31cr; Net-ITC check = 0.00 all states; 8D -1.32cr
+  (8A understated: TN/TG/WB/HR have no FY 25-26 2B file); 12F 9.68cr = the 6A1 format variance (DM net -1.17L);
+  Table 13 (PY 8.03cr) vs 6A1-less-unclaimed 8.23cr -> +20.6L, 8 states Matched / 11 for CA.
+- TRAPS: (1) openpyxl saves DROP the PivotTable body but keep its definition -> Excel refuses to open; strip the
+  orphan pivot parts at zip level, then re-create PT_6A1 via COM (both steps scripted). (2) Copying last year's
+  cell styles onto the extract sheet produced a locale-tagged date format + row-level style that Excel rejected -
+  rebuild such sheets with plain styling. (3) openpyxl column_dimensions can emit OVERLAPPING <col> ranges
+  (min=3 max=5 then min=4) - also fatal; normalise per column. Diagnose with zip_bisect.py (1 min/trial).
+- T12B_T12C and 8C-vs-13-12 sheets (my earlier additions, not in last year's file) removed.
