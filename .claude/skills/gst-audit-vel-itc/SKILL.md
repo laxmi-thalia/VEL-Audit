@@ -282,3 +282,30 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
 - **ZFI06 (BK-BM lookups):** the client's export (all four files = the same 1,717 documents) shares ZERO of the ITC
   register's 6,018 FY 25-26 RE documents (same 29-series range, same months/BPs) - it is a complementary selection, not a
   key problem. Only 29 other-series docs match (108 rows). Needs a fresh ZFI06 run without that selection.
+
+## Changes log - 2026-09-18 (night 2): matching layers per Pawan's reco script, register date fix, Apr-25 RCM docs, 2B Return Period
+
+- **ITC register dates carried the 18:30 tz shift** (41,111 invoice / 40,891 posting dates) -> itc_date_fix.py normalised
+  them (same defect as the RCM register). Date+amount fallback works again (0 -> 205 lines).
+- **Matching layers (Pawan 18-09, "not too aggressive", from his ITC vs 2B Reco.py):** (1) exact GSTIN + invoice (zero-
+  insensitive); (2) GSTIN + amount; (3) invoice-similar + amount - 'similar' = core-normalised numbers (INV/INVOICE and
+  trailing FY stripped) contain each other, or same prefix + numeric tail within edit distance 2. Layers 2-3 work at
+  DOCUMENT level (register lines summed per vendor+invoice vs 2B document), same recipient GSTIN, tolerance +/-100,
+  single candidate only, each 2B document once; verdict text ends '- invoice no differs, review'. Line-level amount
+  fallback now single-candidate too. No PAN / cross-state layers. Result: not-found 8,172 -> 5,081 lines; GSTIN+amount
+  364 docs (2,229 lines), invoice-similar 180 docs (1,273 lines); Consider 6,830; D_ 14.90cr -> 9.42cr.
+  SHIV KIRAN case (register GZ/04/24-25 & 3/GZ/03 vs 2B GZ/04 & GZ/03) now matches; 2B docs read 'Claimed'.
+- **Apr-25 RCM lines** (49 category lines) replaced by the 382 Mar-25 documents from last year's RCM Register
+  (rcm_apr25_docs.py): supplier GSTIN on 154, vendor names, SAP doc numbers; tax 26,09,545 (Arunachal +6,678 vs the
+  CA's claim). Golden 1,06,99,62,864.15 -> **1,06,99,69,542.15**.
+- **TRAP (cost 40 min):** inserting rows AT row 6 shifts every range that starts at $6 (own sheet and dependents) to
+  $6+K. Never insert at the first data row - insert at row 7 and move, or repair afterwards. Brute-force
+  UsedRange.Replace across 71 sheets did not finish in 40 min; the targeted repair (openpyxl scan -> per-column bulk
+  Formula writes, repair_range_targets.py) took 79 s. Register B_ columns are rewritten by final_countif_rule.py.
+- **T6A1 Extract '2B Return Period'** (t6a1_2b_period.py): the old formulas pointed at a vanished helper column $AF
+  (+68 row offset) - 3,141 blanks. Now a self-contained LIVE lookup: FY 24-25 2B ('GSTR-2B ITC Data', helper KEY col AB)
+  first, then 'GSTR-2B Apr25-Aug26' (KEY AW -> Tax Period), else 'Not in 2B (Apr-24 to Aug-26)'; RCM rows fixed text.
+  SUBTOTAL(9) totals in bold on row 3 for O:R. 1,482 dated / 1,773 not in 2B (register-sourced correction entries).
+  cascade_fix.py rebuilds the extract rows -> re-run t6a1_2b_period.py after every cascade.
+- ZFI06 unchanged (client export is a complementary document set). FY 26-27 register: Inputs sheets are the cumulative
+  FY 25-26 register; Table 13 rows = Invoice Year 25-26 with GSTR 2B PERIOD in FY 26-27 (~3,791 lines) - proposal pending.
