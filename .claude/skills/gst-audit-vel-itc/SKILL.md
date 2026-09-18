@@ -231,3 +231,12 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   line of each matched 2B document, "Not consider" on the other lines of that document, BLANK everywhere else.
   Status text (NOT FOUND IN 2B, No vendor GSTIN, Matched in FY 24-25 2B, review flags) lives in `Reco Remarks`
   only. Never put "Not in 2B" wording in Countif again. Counts: Consider 5,516 / Not consider 26,232 / blank 9,760.
+- **RULING (Pawan 18-09, final on Countif): de-duplication runs on the REGISTER'S OWN invoice number, independent
+  of 2B.** Key = vendor GSTIN (or vendor name when no valid GSTIN) + normalised Invoice No.; first line = Consider,
+  other lines of that invoice = Not consider; RCM/ISD lines blank. So a document NOT found in 2B still gets its
+  Consider line: `B_` = SUMIFS of the register by own KEY (+ vendor name) on Consider lines = the books total of
+  every ITC document (ties to Category=ITC tax 93,75,28,722.19); `2B_` = SUMIFS of the 2B sheet by KEY2, **0 when
+  KEY2 is blank** (not found); `D_` = B_ - 2B_. Counts: Consider 6,830 / Not consider 34,061 / blank 617.
+  Result: B_ 93.75cr vs 2B_ 78.81cr, D_ 14.94cr (= not-in-2B documents + matched-doc differences).
+  Deliverable also exported as `.xlsb` (COM SaveAs FileFormat=50; ~40s; 52MB -> 24MB) - the .xlsx stays the
+  working copy (openpyxl cannot write xlsb); re-export after every change.
