@@ -209,3 +209,24 @@ sync scripts. If a change alters numbers, it must reproduce the goldens first.
   MP July), 2,065 debit (payment) lines, 7,440 FY 24-25, 971 FY 26-27 open items. Statewise RCM vs 3B unchanged.
 - TRAP: delete/recreate the GL sheet BEFORE writing register formulas that reference it (a delete turns them into #REF!).
   'Found in Input GL (post-ITC)' / 'Input GL Remarks' keep their claim-month semantics - GL-key columns were added.
+
+## Changes log - 2026-09-18 (late): MP monthly files, RCM lines at document level, ZFI06 coverage (Pawan)
+
+- **MP working files are named `GSTR 3B Madhyapradesh <Mon> <Year>.xlsx` (space, not hyphen)** - every `gstr-3b` prefix
+  match skipped MP for 12 months. Pattern is now `gstr[ -]?3b` in rcm_monthly_survey.py and tcr_comp_extract2.py.
+  RCM Register: MP Jul-25 (94 posting rows) inserted, MP Jan-26 Conso (37) replaced by the monthly working (71) - both tie
+  to 3B 3.1(d) to the rupee (rcm_add_mp.py, COM insert/delete so ranges follow). Statewise RCM vs 3B: -12.75L -> +5.98L,
+  of which HOIS (2 rows, no GSTIN) 5.50L / 99,000 tax; Gujarat +94,649 / TN +7,500 / Telangana -54,372 taxable only.
+  Tax comp: MP months now explained (MP Oct-25 -> Add to 4D1: reclaim 34.4L not in 4D1).
+- **ITC Register 2025-26 RCM lines rebuilt at DOCUMENT level** (rcm_itc_doclevel.py): the 397 category lines (state x
+  claim month x category, Document Number 'RCM') for May-25..Mar-26 claims replaced by 2,866 document lines from the RCM
+  Register (Document Number, Posting Date, Invoice No. = Reference, Vendor Name, Vendor GSTIN, category, amounts = legs
+  summed, claim month from the register's claim column; Reco Remarks carries the Input-GL same-document check). Apr-25
+  claim lines (49, FY 24-25 RCM = 6A1 component) kept. Golden 1,06,98,71,702.15 -> 1,06,99,62,864.15 (+91,162 = the
+  register-vs-CA-claim month gaps: UP Aug-25 +44,820, Bihar Dec-25 +1,250, Feb-26 +812, ...). Net-ITC check 0.00.
+  TRAP (cost a restore): the register's RCM lines are NOT contiguous per state - delete ALL target rows first (exact rows,
+  asserted), THEN insert per state at positions re-scanned after the deletes, bottom-up. Verify per-claim-month totals
+  against the register before saving. cascade_fix.py will re-label RCM lines' Reco Remarks if re-run.
+- **ZFI06 (BK-BM lookups):** the client's export (all four files = the same 1,717 documents) shares ZERO of the ITC
+  register's 6,018 FY 25-26 RE documents (same 29-series range, same months/BPs) - it is a complementary selection, not a
+  key problem. Only 29 other-series docs match (108 rows). Needs a fresh ZFI06 run without that selection.
