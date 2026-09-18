@@ -309,3 +309,19 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   cascade_fix.py rebuilds the extract rows -> re-run t6a1_2b_period.py after every cascade.
 - ZFI06 unchanged (client export is a complementary document set). FY 26-27 register: Inputs sheets are the cumulative
   FY 25-26 register; Table 13 rows = Invoice Year 25-26 with GSTR 2B PERIOD in FY 26-27 (~3,791 lines) - proposal pending.
+
+## Changes log - 2026-09-18 (night 3): ITC Register 2026-27 rebuilt from the client's Inputs sheets (Pawan)
+
+- Source = Apr-Jun 26 state working files, sheet 'Inputs' (header row holds 'Document Number'; 17 header variants -
+  read by name with fallbacks: Business place/Business Place, Vendor GSTIN/GSTN, Reference/Invoice no, Taxable Value/
+  Taxable Amt/Taxable Amount, G/L Account/G-L Account, Invoice Year/Invoice year/FY/Document Year, GST CREDIT/GST CREDIT
+  YES/NO/YES, GSTR 2B PERIOD/GSTR2B Month). The Inputs sheet is the CUMULATIVE FY 25-26 register carried forward, so
+  'GST CREDIT = Yes' is NOT 'claimed in 26-27'. Table 13 / 12C rows = Invoice Year 25-26 AND GSTR 2B PERIOD in FY 26-27,
+  de-duplicated across the monthly files on (doc, GL, vendor GSTIN, reference, IGST, CGST, SGST): 2,109 rows, tax
+  2,42,80,458 (Apr-26 1.66cr / May 0.24cr / Jun 0.52cr); July files carry no FY 25-26 rows. Replaces the 260 2B-derived rows.
+- Live 2B columns against 'GSTR-2B Apr25-Aug26' (KEY AW): Available in 2B Y 1,083 / N 1,026; Final Remarks 'Matched A'
+  1,072, 'Matched - in 2B of 2025-26' 11, 'Not in 2B' 1,026. GSTR 9_Reporting '13', 9C '12C', Reasons text, 3B Claim
+  Month as text '01 Apr 2026' (Excel auto-dates the string - write with NumberFormat '@'). ITC Summary Table 13 / 12C
+  blocks follow via the expanded ranges ($5:$2113): T13 IGST 2,27,25,031.78 / C-SGST 1,74,12,286.58 each.
+- Method: replace rows by inserting INSIDE the range (row 6) then deleting the old rows - dependents' ranges follow with
+  no repair; single COM session incl. xlsb export (~2 min). fy2627_rebuild.py + fy2627_cols.py.
