@@ -261,7 +261,7 @@ is open in Excel — ask Rashid to close it, never write to a new twin.
   `C:\Users\pawar\Downloads\Amar International - Automation\ENGAGEMENT_NOTES.md`.
 - **VEL (Vikran Engineering, 19 GSTINs)** has its own per-phase skills — sales phase:
   `.claude/skills/gst-audit-vel-sales/SKILL.md`; engine + contracts at
-  `c:\PROJECTS\accountic\gst-audit-engine\vel\`. RCM/ITC skills follow in their phases.
+  `vel/` (this repo: C:/PROJECTS/gst-audit-engine). RCM/ITC skills follow in their phases.
 
 ## After every engagement
 

@@ -9,7 +9,7 @@ Same engagement/master as the sales and RCM skills — **their Standing rules al
 (formulas-only, no LLM without asking, file-lock etiquette, verify-before-reporting,
 re-snapshot before edits, user edits win).
 
-Engine home: `c:\PROJECTS\accountic\gst-audit-engine\vel\`
+Engine home: `vel/` (this repo: C:/PROJECTS/gst-audit-engine)
 - `contracts/itc-sources.md` — **read first**: every source with structure + traps.
 - `contracts/goldens_fy2526_itc.md` — backtest targets (gitignored; no client figures here).
 - `contracts/formats.md` / `reference/formats.json` — layout authority (regenerate on change).

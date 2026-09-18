@@ -9,7 +9,7 @@ Same engagement/master workbook as `gst-audit-vel-sales` — **read that skill's
 rules first; every one applies here** (formulas-only, no LLM without asking, file-lock
 etiquette, verify-before-reporting, user edits win, re-snapshot before edits).
 
-Engine home: `c:\PROJECTS\accountic\gst-audit-engine\vel\`
+Engine home: `vel/` (this repo: C:/PROJECTS/gst-audit-engine)
 - `contracts/rcm-sources.md` — **read first**: every RCM source file with its structure,
   quirks and traps (phantom rows, doc-number recycling, state-name typos, account markers).
 - `contracts/goldens_fy2526_rcm.md` — the backtest targets (gitignored; client figures

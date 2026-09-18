@@ -10,7 +10,7 @@ ClearTax, portal extracts via Octa. CA = Priyesh (DPS & Co). Operator = Pawan (d
 a CA). FY 2025-26 built and verified; this skill captures exactly how, so FY 26-27 is a
 one-line prompt.
 
-Engine home: `c:\PROJECTS\accountic\gst-audit-engine\vel\`
+Engine home: `vel/` (this repo: C:/PROJECTS/gst-audit-engine)
 - `scripts/` — every build/fix/verify script that made the master (ported from the session
   scratchpad; load-bearing ones named below).
 - `contracts/sources.md` — **read this first**: source paths, header contracts, closed
