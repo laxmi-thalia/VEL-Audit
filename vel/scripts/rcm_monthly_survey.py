@@ -22,7 +22,7 @@ for mi, mf in enumerate(MONTHS):
         if key not in STATES: continue
         g = STATES[key]
         folder = M + mf + "/" + d + "/"
-        cands = [x for x in os.listdir(folder) if x.lower().startswith("gstr-3b") and x.lower().endswith(".xlsx") and not x.startswith("~$")]
+        cands = [x for x in os.listdir(folder) if re.match(r"gstr[ -]?3b", x.lower()) and x.lower().endswith(".xlsx") and not x.startswith("~$")]
         if not cands: missing.append((MLBL[mi], d, "no GSTR-3B xlsx")); continue
         fn = cands[0]
         try:
