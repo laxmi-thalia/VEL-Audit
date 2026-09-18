@@ -227,3 +227,7 @@ Apr-25 = last year's method); ITC Summary extract ranges repointed; 6A1 total 9.
 TRAPS: COM bulk Value= write fails "OSError 22" on naive datetimes -> write Excel serials + NumberFormat;
 openpyxl read-only header maps are 1-based - index value tuples with [c-1] (an off-by-one silently emptied the
 FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-run cascade_fix.py.
+- **RULING (Pawan 18-09, later): `Countif` is the de-duplication flag ONLY** - "Consider" on the first register
+  line of each matched 2B document, "Not consider" on the other lines of that document, BLANK everywhere else.
+  Status text (NOT FOUND IN 2B, No vendor GSTIN, Matched in FY 24-25 2B, review flags) lives in `Reco Remarks`
+  only. Never put "Not in 2B" wording in Countif again. Counts: Consider 5,516 / Not consider 26,232 / blank 9,760.
