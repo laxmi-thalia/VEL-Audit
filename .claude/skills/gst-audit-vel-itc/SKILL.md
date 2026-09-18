@@ -203,3 +203,27 @@ from a LOCAL copy of the xlsb via COM -> `ly_itc_dump.pkl/.txt` (reference/). Th
   rebuild such sheets with plain styling. (3) openpyxl column_dimensions can emit OVERLAPPING <col> ranges
   (min=3 max=5 then min=4) - also fatal; normalise per column. Diagnose with zip_bisect.py (1 min/trial).
 - T12B_T12C and 8C-vs-13-12 sheets (my earlier additions, not in last year's file) removed.
+
+## Changes log - 2026-09-18 (evening): NA verification + cascade fix (Pawan)
+
+Pawan challenged the NA population ("too harsh, gaps, blunders"). Independent brute-force re-classification of all
+34,997 NA rows on ITC lines proved 26,832 correct (25,724 other lines of a matched doc - each verified against its
+Consider line's B_ SUMIFS = full document sum, 0 orphans / 0 mismatches / 0 double-Consider; 1,082 FY 24-25-2B;
+26 no GSTIN) and found: (a) 32 rows wrongly linked by the amount / date+amount fallbacks to a 2B doc already owned
+by an exact match or of a different invoice year (SDIP/24-25/63 -> SDIP/25-26/007 was the reported case);
+(b) 279 "not found" rows that exist in the working-file 2B for TN/TG/WB/KL/HR (no Octa FY 25-26 export - the
+full Octa report Pawan is sending supersedes); (c) 175 e-invoice rows in the working files that are not 2B.
+CASCADE RULES NOW (cascade_fix.py): leading-zero-insensitive keys (07 == 007; KEY2 still stamped as the 2B row's
+own KEY so SUMIFS hit); fallbacks may only take 2B docs NOT owned by an exact match, each once; fallback must
+respect invoice FY; fallback verdicts end "- invoice no differs, review". Countif column relabelled: Consider /
+Not consider - already considered in the Consider line of this document / Not consider - matched in FY 24-25 2B
+(Table 6A1) / Not consider - no vendor GSTIN / Not in 2B (Apr-25 to Aug-26) / Not applicable - RCM|ISD line.
+The B_/2B_/D_ formulas test only ="Consider", so labels are free text.
+RESULT: exact matches 30,945 -> 31,515 (zero-insensitive), fallbacks 275 -> 233 (all review-flagged), not-found
+8,734 -> 8,205, Consider docs 5,464 -> 5,516; books vs 2B on matched docs 79.07cr vs 78.83cr, net diff 47.35L ->
+24.52L; the 32 suspects: 25 now not-found, 5 legitimate amount matches, 1 exact, 1 FY 24-25 (SDIP/24-25/63).
+T6A1 Extract rebuilt on the corrected verdicts (3,595 rows; RCM component = ITC-register RCM lines claimed
+Apr-25 = last year's method); ITC Summary extract ranges repointed; 6A1 total 9.58cr; Net-ITC check 0.00.
+TRAPS: COM bulk Value= write fails "OSError 22" on naive datetimes -> write Excel serials + NumberFormat;
+openpyxl read-only header maps are 1-based - index value tuples with [c-1] (an off-by-one silently emptied the
+FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-run cascade_fix.py.
