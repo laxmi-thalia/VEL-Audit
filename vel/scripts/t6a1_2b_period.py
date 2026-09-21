@@ -19,16 +19,22 @@ b2 = wb["GSTR-2B Apr25-Aug26"]; bh = [c.value for c in next(b2.iter_rows(min_row
 NB = 2 + sum(1 for r in b2.iter_rows(min_row=3, values_only=True) if r[0]); wb.close()
 from openpyxl.utils import get_column_letter as L
 assert BH["KEY"] == 49 and BH["Tax Period"] == 2 and OH["2B Return Period"] == 4 and OH["GSTIN of supplier"] == 7 and OH["Invoice number"] == 9, (BH.get("KEY"), OH)
-KEYCOL = max(OH.values()) + 1; KL = L(KEYCOL)
+KEYCOL = next((c for h_, c in OH.items() if str(h_).startswith("KEY (supplier GSTIN")), max(OH.values()) + 1); KL = L(KEYCOL)
 print("extract rows 5..%d | old 2B rows 6..%d (helper KEY -> col %s) | Apr25-Aug26 rows 3..%d" % (EN, ON, KL, NB))
 norm = lambda a: 'UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(%s," ",""),"-",""),"/",""),".",""),"\'",""),"_",""))' % a
 cS, cJ, cM, cG, cT = L(H["Source"]), L(H["GSTIN of supplier"]), L(H["Invoice number"]), L(H["GSTR-9 Remarks"]), L(H["Source row (helper)"])
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:
     t0 = time.time(); wbx = xl.Workbooks.Open(P); xl.Calculation = -4135
-    o = wbx.Worksheets("GSTR-2B ITC Data"); x = o.Cells(5, KEYCOL); x.Value = "KEY (supplier GSTIN + invoice, normalised)"; x.Font.Bold = True; x.Font.Color = 0xFFFFFF; x.Interior.Color = 0xB09784   # #8497B0 band (DPS-added)
-    o.Range("%s6:%s%d" % (KL, KL, ON)).Formula = "=" + norm("$G6&$I6"); o.Columns(KEYCOL).ColumnWidth = 30
-    e = wbx.Worksheets("T6A1 Extract - 24-25"); key = norm("$%s5&$%s5" % (cJ, cM))
+    o = wbx.Worksheets("GSTR-2B ITC Data"); x = o.Cells(5, KEYCOL); x.Value = "KEY (supplier GSTIN + invoice + FY, normalised)"; x.Font.Bold = True; x.Font.Color = 0xFFFFFF; x.Interior.Color = 0xB09784   # #8497B0 band (DPS-added)
+    o.Range("%s6:%s%d" % (KL, KL, ON)).Formula = "=" + norm("$G6&$I6") + '&"|"&$B6'; o.Columns(KEYCOL).ColumnWidth = 30
+    b2s = wbx.Worksheets("GSTR-2B Apr25-Aug26"); B2H = {b2s.Cells(2, c).Value: c for c in range(1, 80) if b2s.Cells(2, c).Value}
+    if "KEY+FY" not in B2H:
+        kc = max(B2H.values()) + 1; xk = b2s.Cells(2, kc); xk.Value = "KEY+FY"; xk.Font.Bold = True; xk.Font.Color = 0xFFFFFF; xk.Interior.Color = 0xB09784; B2H["KEY+FY"] = kc
+    CYK = L(B2H["KEY+FY"]); b2s.Range("%s3:%s%d" % (CYK, CYK, NB)).Formula = '=$AW3&"|"&$AV3'
+    e = wbx.Worksheets("T6A1 Extract - 24-25")
+    fyL = 'IF(MONTH($L5)>=4,YEAR($L5)&"-"&RIGHT(YEAR($L5)+1,2),YEAR($L5)-1&"-"&RIGHT(YEAR($L5),2))'
+    key = norm("$%s5&$%s5" % (cJ, cM)) + '&"|"&' + fyL
     f = ('=IF($%s5="","",IFERROR(INDEX(\'GSTR-2B ITC Data\'!$D$6:$D$%d,MATCH(%s,\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,0)),'
          'IFERROR(INDEX(\'GSTR-2B Apr25-Aug26\'!$B$3:$B$%d,MATCH(%s,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,0)),"Not in 2B (Apr-24 to Aug-26)")))' % (cJ, ON, key, KL, KL, ON, NB, key, NB))
     src = [v[0] for v in e.Range("%s5:%s%d" % (cS, cS, EN)).Value]
@@ -51,11 +57,11 @@ try:
     vals = [v[0] for v in e.Range("C5:C%d" % EN).Value]
     cnt = collections.Counter(("LY/CY period" if hasattr(v, "year") or isinstance(v, float) else str(v)[:32]) for v in vals)
     ly = cy = 0
-    ok = [v[0] for v in o.Range("%s6:%s%d" % (KL, KL, ON)).Value]; oper = [v[0] for v in o.Range("D6:D%d" % ON).Value]; lyk = {k: p for k, p in zip(ok, oper) if k}
+    ok = [v[0] for v in o.Range("%s6:%s%d" % (KL, KL, ON)).Value]; oper = [v[0] for v in o.Range("D6:D%d" % ON).Value]; lyk = {k: p for k, p in zip(ok, oper) if k}; lyk_nofy = {str(k).split("|")[0] for k in lyk}
     ek = [v[0] for v in e.Range("%s5:%s%d" % (cJ, cJ, EN)).Value]; em = [v[0] for v in e.Range("%s5:%s%d" % (cM, cM, EN)).Value]
     nrm = lambda s: re.sub(r"[ \-/.'_]", "", str(s if s is not None else "").upper())
     for g, i, v in zip(ek, em, vals):
-        if hasattr(v, "year") and (nrm(g) + nrm(i)) in lyk: ly += 1
+        if hasattr(v, "year") and any(k.startswith(nrm(g) + nrm(i) + "|") for k in ()) or (hasattr(v, "year") and (nrm(g) + nrm(i)) in lyk_nofy): ly += 1
         elif hasattr(v, "year"): cy += 1
     err = 0
     for w in wbx.Worksheets:
