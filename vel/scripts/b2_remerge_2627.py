@@ -75,15 +75,15 @@ normf = lambda e: 'UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(
 for r in range(3, NB + 1):
     ws.cell(r, base + 4).value = "=" + normf("%s%d&%s%d" % (c("Supplier GSTIN"), r, c("Doc No"), r))
     ws.cell(r, base + 5).value = '=IFERROR(INDEX(%s,MATCH($%s%d,%s,0)),"")' % (RG("3B Claim  Month"), c("KEY"), r, RG("KEY2 (matched 2B key)")); ws.cell(r, base + 5).number_format = "mmm-yy"
-    ws.cell(r, base + 6).value = '=IF($%s%d="","NOT IN ITC REGISTER (FY 25-26 claims)","Matched with ITC Register - claimed "&TEXT($%s%d,"mmm-yy"))' % (c("3B Claim Month"), r, c("3B Claim Month"), r)
-    ws.cell(r, base + 7).value = '=IF($%s%d="2024-25",IF($%s%d="","6A1 - Unclaimed (24-25 dated, no 3B claim month)",IF($%s%d="2024-25","6A1 - 24-25 inv in 24-25 2B, claimed 25-26","6A1 - 24-25 inv in 25-26 2B, claimed 25-26")),"")' % (c("Doc FY (doc date)"), r, c("3B Claim Month"), r, c("FY (2B period)"), r)
-    ws.cell(r, base + 8).value = ('=IF($%s%d<>"2025-26","No-"&$%s%d,IF($%s%d="Yes","No-25-26 - RCM",IF($%s%d="No","No-25-26 - ITC not available",IF($%s%d="Yes","No-25-26 - Amendment",IF($%s%d<>"2025-26","No-"&$%s%d,"Yes")))))'
+    ws.cell(r, base + 6).value = '=IF($%s%d="","Not in ITC Register – FY 25-26 claims","Matched with ITC Register – claimed "&TEXT($%s%d,"mmm-yy"))' % (c("3B Claim Month"), r, c("3B Claim Month"), r)
+    ws.cell(r, base + 7).value = '=IF($%s%d="2024-25",IF($%s%d="","Table 6A1 – FY 24-25 invoice – unclaimed",IF($%s%d="2024-25","Table 6A1 – FY 24-25 invoice in 2B of FY 24-25 – claimed","Table 6A1 – FY 24-25 invoice in 2B of FY 25-26 – claimed")),"")' % (c("Doc FY (doc date)"), r, c("3B Claim Month"), r, c("FY (2B period)"), r)
+    ws.cell(r, base + 8).value = ('=IF($%s%d<>"2025-26","No – 2B period FY "&RIGHT($%s%d,5),IF($%s%d="Yes","No – RCM",IF($%s%d="No","No – ITC not available",IF($%s%d="Yes","No – amendment",IF($%s%d<>"2025-26","No – FY "&RIGHT($%s%d,5)&" document","Yes")))))'
                                   % (c("FY (2B period)"), r, c("FY (2B period)"), r, c("Reverse Charge"), r, c("GSTR-9 (8A) ITC Available"), r, c("Is Amendment"), r, c("Doc FY (doc date)"), r, c("Doc FY (doc date)"), r))
     ws.cell(r, base + 9).value = '=IF($%s%d="Yes","To be considered","Ignore")' % (c("Table 8A"), r)
     ws.cell(r, base + 11).value = '=IF(AND($%s%d="2025-26",$%s%d="2026-27"),IF($%s%d="","Unclaimed","Claimed"),"")' % (c("Doc FY (doc date)"), r, c("FY (2B period)"), r, c("3B Claim Month"), r)
     ws.cell(r, base + 10).value = '=IF($%s%d="Claimed","Table 8C of GSTR-9","")' % (c("Table 13"), r)
     ws.cell(r, base + 12).value = '=IF($%s%d<>"",$%s%d,IF($%s%d<>"",$%s%d,$%s%d))' % (c("6A1 mark"), r, c("6A1 mark"), r, c("Table 8C"), r, c("Table 8C"), r, c("Reco Remarks"), r)
-    ws.cell(r, base + 13).value = ('=IF(LEFT($%s%d,3)="6A1","Table 6A1 of GSTR-9 - "&IF(ISNUMBER(SEARCH("Unclaimed",$%s%d)),"Unclaimed","Claimed"),IF($%s%d<>"",$%s%d,IF($%s%d="Yes","Table 6B of GSTR-9","")))'
+    ws.cell(r, base + 13).value = ('=IF(LEFT($%s%d,9)="Table 6A1","Table 6A1 of GSTR-9 - "&IF(ISNUMBER(SEARCH("unclaimed",$%s%d)),"Unclaimed","Claimed"),IF($%s%d<>"",$%s%d,IF($%s%d="Yes","Table 6B of GSTR-9","")))'
                                    % (c("6A1 mark"), r, c("6A1 mark"), r, c("Table 8C"), r, c("Table 8C"), r, c("Table 8A"), r))
 for h in ("Permanent Reversals", "Reclaim - Table 6H", "Query"): ws.cell(2, base + 1 + OUR.index(h)).fill = AMB
 NC = len(PN_H) + len(OUR)

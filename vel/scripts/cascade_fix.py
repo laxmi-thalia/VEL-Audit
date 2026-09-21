@@ -57,9 +57,9 @@ for i, r in enumerate(B):
 verdict = [""] * N; key2 = [""] * N; exact_owned = set()
 for i, r in enumerate(rows):
     vg = S(g(r, "Vendor GSTIN")).upper()
-    if not GST.match(vg): verdict[i] = "No vendor GSTIN (URD/ISD/RCM-self)"; continue
+    if not GST.match(vg): verdict[i] = ("Not applicable – RCM self-invoice" if g(r, "Category") == "RCM" else ("Not applicable – ISD" if g(r, "Category") == "ISD" else "Not applicable – no vendor GSTIN (URD)")); continue
     c = by_z.get(vg + zkey(g(r, "Invoice No.")))
-    if c: key2[i] = b2key[c[0]]; exact_owned.add(c[0]); verdict[i] = "Matched (invoice no)"
+    if c: key2[i] = b2key[c[0]]; exact_owned.add(c[0]); verdict[i] = "Matched with 2B – invoice no"
 # ---------------- pass 2a (Pawan 18-09): DOCUMENT-level fallbacks - the client splits an invoice over several register lines
 # and books it under a suffixed/prefixed number (GZ/04/24-25 vs 2B GZ/04; 3/GZ/03 vs GZ/03), so line-level rules never tie.
 # Register document = (vendor, zero-insensitive invoice); 2B document = (vendor, zero-insensitive doc no), unowned by pass 1.
@@ -118,12 +118,12 @@ for (vg, inv), d in regdoc.items():
     if not cands: continue
     ri = regraw[(vg, inv)]; rc = inv_core(ri)
     sim = [dk for dk in cands if (len(rc) >= 3 and len(inv_core(b2raw[dk])) >= 3 and (rc in inv_core(b2raw[dk]) or inv_core(b2raw[dk]) in rc)) or inv_gate(ri, b2raw[dk])]
-    if len(sim) == 1: pick, why = sim[0], "Matched (invoice similar + amount within 100) - invoice no differs, review"
-    elif len(cands) == 1: pick, why = cands[0], "Matched (GSTIN + amount within 100) - invoice no differs, review"
+    if len(sim) == 1: pick, why = sim[0], "Matched with 2B – similar invoice no + amount (±100) – review"
+    elif len(cands) == 1: pick, why = cands[0], "Matched with 2B – GSTIN + amount (±100), invoice no differs – review"
     else: continue
     used_docs.add(pick); j0 = b2doc[pick]["rows"][0]; fb_used.update(b2doc[pick]["rows"])
     for i in d["lines"]: key2[i] = b2key[j0]; verdict[i] = why
-    n_inv += why.startswith("Matched (invoice similar"); n_amt += why.startswith("Matched (GSTIN + amount")
+    n_inv += why.startswith("Matched with 2B – similar"); n_amt += why.startswith("Matched with 2B – GSTIN")
 print("pass 2a document-level fallbacks (same recipient, +/-100, single candidate): invoice-similar+amount %d docs, GSTIN+amount %d docs" % (n_inv, n_amt))
 # ---------------- pass 2b: line-level fallbacks - unowned docs only, once each, same FY
 for i, r in enumerate(rows):
@@ -132,13 +132,13 @@ for i, r in enumerate(rows):
     ifY = fy_of_label(g(r, "Invoice Year"), d)
     ok = lambda j: j not in exact_owned and j not in fb_used and (not ifY or b2fy[j] == ifY)
     c = [j for j in (by_dt.get((vg, d.date(), tot)) if isinstance(d, dt.datetime) else []) or [] if ok(j)]
-    if c: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched (date+amount) - invoice no differs, review"; continue
+    if c: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched with 2B – date + amount, invoice no differs – review"; continue
     c = [j for j in by_amt.get((vg, tot), []) if ok(j)]
-    if tot and len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched (amount, single candidate) - invoice no differs, review"; continue
+    if tot and len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched with 2B – amount only, invoice no differs – review"; continue
     # pass 3: FY 24-25 2B (working files)
     if o_z.get(vg + zkey(g(r, "Invoice No."))) or (isinstance(d, dt.datetime) and o_dt.get((vg, d.date(), tot))):
-        verdict[i] = "Matched in FY 24-25 2B (working files) - 6A1 component 1"; key2[i] = "PY:" + vg + norm(g(r, "Invoice No.")); continue
-    verdict[i] = "NOT FOUND IN 2B (Apr25-Aug26)"
+        verdict[i] = "Matched with 2B of FY 24-25 – Table 6A1"; key2[i] = "PY:" + vg + norm(g(r, "Invoice No.")); continue
+    verdict[i] = "Not in 2B – Apr-25 to Aug-26"
 # ---------------- Consider + labels
 seen = set(); labels = []; six = []; sixrem = []
 for i, r in enumerate(rows):
@@ -147,11 +147,11 @@ for i, r in enumerate(rows):
     elif cat in ("RCM", "ISD"): labels.append("Not applicable - %s line (no 2B document)" % cat)
     elif k2.startswith("PY:"): labels.append("Not consider - matched in FY 24-25 2B (Table 6A1)")
     elif k2: labels.append("Not consider - already considered in the Consider line of this document")
-    elif v.startswith("No vendor"): labels.append("Not consider - no vendor GSTIN")
+    elif v.startswith("Not applicable"): labels.append("Not consider - no vendor GSTIN")
     else: labels.append("Not in 2B (Apr-25 to Aug-26)")
     inv_fy = fy_of_label(g(r, "Invoice Year"), g(r, "Invoice Date"))
-    if v.startswith("Matched in FY 24-25"): six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")
-    elif v.startswith("NOT FOUND") and inv_fy == "2024-25" and cat == "ITC": six.append("Yes"); sixrem.append("Correction Entries- ITC dated 24-25 reversed in 25-26")
+    if v.startswith("Matched with 2B of FY 24-25"): six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")
+    elif v.startswith("Not in 2B") and inv_fy == "2024-25" and cat == "ITC": six.append("Yes"); sixrem.append("Correction Entries- ITC dated 24-25 reversed in 25-26")
     else: six.append(None); sixrem.append(None)
 print("verdicts:", dict(collections.Counter(v.split(" - ")[0] for v in verdict)))
 print("labels:", dict(collections.Counter(labels)))

@@ -325,3 +325,15 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   blocks follow via the expanded ranges ($5:$2113): T13 IGST 2,27,25,031.78 / C-SGST 1,74,12,286.58 each.
 - Method: replace rows by inserting INSIDE the range (row 6) then deleting the old rows - dependents' ranges follow with
   no repair; single COM session incl. xlsb export (~2 min). fy2627_rebuild.py + fy2627_cols.py.
+
+## Changes log - 2026-09-21: standard remark vocabulary (Pawan), Tax Rate formula, Table 13 tolerance
+
+- **Remarks standardised** on ITC Register 2025-26 'Reco Remarks' and the 2B sheet's Reco Remarks / 6A1 mark / Table 8A
+  (remarks_standardize.py; cascade_fix.py and b2_remerge_2627.py emit the same texts): sentence case, 'Matched with 2B – <basis>'
+  ('– review' on non-exact), 'Not in 2B – Apr-25 to Aug-26', 'Not applicable – RCM self-invoice / – ISD / – no vendor GSTIN (URD)';
+  2B side 'Matched with ITC Register – claimed Mmm-yy' / 'Not in ITC Register – FY 25-26 claims', 'Table 6A1 – FY 24-25 invoice …',
+  Table 8A 'No – RCM / No – FY xx-xx document / No – 2B period FY xx-xx / No – ITC not available / No – amendment'.
+  UNCHANGED on purpose (ITC Summary / T6A1 test them byte-exact): 'Table 6A1 of GSTR-9 - Unclaimed/Claimed', Table 13
+  'Claimed/Unclaimed', 'Correction Entries- ITC dated 24-25 reversed in 25-26', Countif 'Consider/Not consider', T6A1 Source labels.
+- ITC Register 'Tax Rate' is a live formula = Total GST / Taxable Value x 100 (7 rows differ >0.5 from the client's stated rate).
+- 'Table 13 & 6A1 differences' Remarks: Matched when ABS(Total) < 10 (was < 1).
