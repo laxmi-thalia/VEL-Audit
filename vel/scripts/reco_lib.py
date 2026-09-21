@@ -50,6 +50,21 @@ def classify_vendor_gstin(g):
     pan = s[2:12] if len(s) >= 12 else ""
     return ("valid", pan) if GST.match(s) else ("malformed", pan)
 def _tot(r): return round(num(r["igst"]) + num(r["cgst"]) + num(r["sgst"]), 2)
+# Numbered vocabulary (CA Priyesh 21-09: same numbered remark on the register and the 2B sheet so filter n-n ties on both sides;
+# only 10 'Not in 2B' (books only) and 11 'Not in books' (2B only) differ). Non-exact matches carry '– review' except 4 (amount & date tie).
+V = {"exact": "1 – Matched with 2B – invoice no",
+     "exact_rcpt": "2 – Matched with 2B – invoice no – recipient GSTIN differs (2B under %s) – review",
+     "pan_fix": "3 – Matched with 2B – invoice no, vendor GSTIN corrected from 2B (%s) – review",
+     "amt_date": "4 – Matched with 2B – amount & date tie, invoice no differs",
+     "similar": "5 – Matched with 2B – similar invoice no + amount (±100) – review",
+     "gstin_amt": "6 – Matched with 2B – GSTIN + amount (±100), invoice no differs – review",
+     "date_amt": "7 – Matched with 2B – date + amount, invoice no differs – review",
+     "amt_only": "8 – Matched with 2B – amount only, invoice no differs – review",
+     "py": "9 – Matched with 2B of FY 24-25 – Table 6A1",
+     "not_in_2b": "10 – Not in 2B – Apr-25 to Aug-26",
+     "not_in_books": "11 – Not in books – FY 25-26 claims",
+     "rcm": "12 – Not applicable – RCM self-invoice", "isd": "13 – Not applicable – ISD", "urd": "14 – Not applicable – no vendor GSTIN (URD)",
+     "invalid": "15 – Not matched – vendor GSTIN invalid (%d chars) – review"}
 def match_register(reg, b2, py_keys, py_dates):
     """reg rows: vendor_gstin, invoice, invoice_date, invoice_year, category, vel_gstin, igst, cgst, sgst.
     b2 rows: supplier_gstin, doc_no, doc_date, company_gstin, key, igst, cgst, sgst.
@@ -64,27 +79,27 @@ def match_register(reg, b2, py_keys, py_dates):
         if isinstance(r["doc_date"], dt.datetime): by_dt[(vg, r["doc_date"].date(), _tot(r))].append(j)
         by_amt[(vg, _tot(r))].append(j)
     exact_owned = set()
-    def rcpt_suffix(i, j):
+    def other_rcpt(i, j):
         cg = S(b2[j]["company_gstin"]).upper(); vel = S(reg[i]["vel_gstin"]).upper()
-        return (" – recipient GSTIN differs (2B under %s) – review" % cg) if cg and vel and cg != vel else ""
+        return cg if cg and vel and cg != vel else ""
     # ---- pass 1: exact (+ malformed-GSTIN PAN rescue)
     for i, r in enumerate(reg):
         kind, pan = classify_vendor_gstin(r["vendor_gstin"]); vg = S(r["vendor_gstin"]).upper(); cat = S(r["category"])
         if kind == "missing":
-            verdict[i] = "Not applicable – RCM self-invoice" if cat == "RCM" else ("Not applicable – ISD" if cat == "ISD" else "Not applicable – no vendor GSTIN (URD)"); continue
+            verdict[i] = V["rcm"] if cat == "RCM" else (V["isd"] if cat == "ISD" else V["urd"]); continue
         if kind == "malformed":
             c = by_pan.get((pan, zkey(r["invoice"]))) if pan else None
-            if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = "Matched with 2B – invoice no, vendor GSTIN corrected from 2B (%s) – review" % S(b2[j]["supplier_gstin"]).upper()
-            else: verdict[i] = "Not matched – vendor GSTIN invalid (%d chars) – review" % len(vg)
+            if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = V["pan_fix"] % S(b2[j]["supplier_gstin"]).upper()
+            else: verdict[i] = V["invalid"] % len(vg)
             continue
         c = by_z.get(vg + zkey(r["invoice"]))
-        if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = "Matched with 2B – invoice no" + rcpt_suffix(i, j)
+        if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); o = other_rcpt(i, j); verdict[i] = (V["exact_rcpt"] % o) if o else V["exact"]
     # ---- pass 2: document-level (same recipient, +/-100, single candidate)
     fb_used = set(); b2doc = {}
     for j, r in enumerate(b2):
         vg = S(r["supplier_gstin"]).upper()
         if not vg or j in exact_owned: continue
-        dk = (vg, zkey(r["doc_no"])); d = b2doc.setdefault(dk, {"tot": 0.0, "fy": fy(r["doc_date"]), "rows": [], "rcpt": S(r["company_gstin"]).upper(), "raw": S(r["doc_no"])})
+        dk = (vg, zkey(r["doc_no"])); d = b2doc.setdefault(dk, {"tot": 0.0, "fy": fy(r["doc_date"]), "rows": [], "rcpt": S(r["company_gstin"]).upper(), "raw": S(r["doc_no"]), "date": r["doc_date"]})
         d["tot"] += _tot(r); d["rows"].append(j)
     by_vendor = collections.defaultdict(list)
     for dk in b2doc: by_vendor[dk[0]].append(dk)
@@ -92,17 +107,21 @@ def match_register(reg, b2, py_keys, py_dates):
     for i, r in enumerate(reg):
         if verdict[i] or S(r["category"]) != "ITC": continue
         vg = S(r["vendor_gstin"]).upper(); dk = (vg, zkey(r["invoice"]))
-        d = regdoc.setdefault(dk, {"tot": 0.0, "fy": fy_of_label(r["invoice_year"], r["invoice_date"]), "lines": [], "rcpt": S(r["vel_gstin"]).upper(), "raw": S(r["invoice"])})
+        d = regdoc.setdefault(dk, {"tot": 0.0, "fy": fy_of_label(r["invoice_year"], r["invoice_date"]), "lines": [], "rcpt": S(r["vel_gstin"]).upper(), "raw": S(r["invoice"]), "date": r["invoice_date"]})
         d["tot"] += _tot(r); d["lines"].append(i)
     used = set()
+    def same_day(a, b): return isinstance(a, dt.datetime) and isinstance(b, dt.datetime) and a.date() == b.date()
     for (vg, inv), d in regdoc.items():
         if not d["tot"]: continue
         cands = [dk for dk in by_vendor.get(vg, []) if dk not in used and (not d["fy"] or b2doc[dk]["fy"] == d["fy"]) and b2doc[dk]["rcpt"] == d["rcpt"] and abs(b2doc[dk]["tot"] - d["tot"]) <= TOL_ABS]
         if not cands: continue
         sim = [dk for dk in cands if inv_similar(d["raw"], b2doc[dk]["raw"])]
-        if len(sim) == 1: pick, why = sim[0], "Matched with 2B – similar invoice no + amount (±100) – review"
-        elif len(cands) == 1: pick, why = cands[0], "Matched with 2B – GSTIN + amount (±100), invoice no differs – review"
+        if len(sim) == 1: pick = sim[0]
+        elif len(cands) == 1: pick = cands[0]
         else: continue
+        # CA 21-09: amount ties to the rupee AND the dates agree -> nothing to review, only the invoice number is written differently
+        if abs(b2doc[pick]["tot"] - d["tot"]) < 1 and same_day(b2doc[pick]["date"], d["date"]): why = V["amt_date"]
+        else: why = V["similar"] if pick in sim else V["gstin_amt"]
         used.add(pick); j0 = b2doc[pick]["rows"][0]; fb_used.update(b2doc[pick]["rows"])
         for i in d["lines"]: key2[i] = b2key[j0]; verdict[i] = why
     # ---- pass 2b: line-level, single candidate; pass 3: prior-year 2B
@@ -111,10 +130,10 @@ def match_register(reg, b2, py_keys, py_dates):
         vg = S(r["vendor_gstin"]).upper(); tot = _tot(r); d = r["invoice_date"]; ifY = fy_of_label(r["invoice_year"], d)
         ok = lambda j: j not in exact_owned and j not in fb_used and (not ifY or fy(b2[j]["doc_date"]) == ifY) and S(b2[j]["company_gstin"]).upper() == S(r["vel_gstin"]).upper()
         c = [j for j in (by_dt.get((vg, d.date(), tot), []) if isinstance(d, dt.datetime) else []) if ok(j)]
-        if len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched with 2B – date + amount, invoice no differs – review"; continue
+        if len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = V["date_amt"]; continue
         c = [j for j in by_amt.get((vg, tot), []) if ok(j)]
-        if tot and len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = "Matched with 2B – amount only, invoice no differs – review"; continue
+        if tot and len(c) == 1: key2[i] = b2key[c[0]]; fb_used.add(c[0]); verdict[i] = V["amt_only"]; continue
         if (vg + zkey(r["invoice"])) in py_keys or (isinstance(d, dt.datetime) and (vg, d.date(), tot) in py_dates):
-            verdict[i] = "Matched with 2B of FY 24-25 – Table 6A1"; key2[i] = "PY:" + vg + norm(r["invoice"]); continue
-        verdict[i] = "Not in 2B – Apr-25 to Aug-26"
+            verdict[i] = V["py"]; key2[i] = "PY:" + vg + norm(r["invoice"]); continue
+        verdict[i] = V["not_in_2b"]
     return [{"verdict": verdict[i], "key2": key2[i]} for i in range(N)]

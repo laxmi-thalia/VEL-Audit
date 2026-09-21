@@ -230,3 +230,18 @@ sync scripts. If a change alters numbers, it must reproduce the goldens first.
 - **ZFI06 (BK-BM lookups):** the client's export (all four files = the same 1,717 documents) shares ZERO of the ITC
   register's 6,018 FY 25-26 RE documents (same 29-series range, same months/BPs) - it is a complementary selection, not a
   key problem. Only 29 other-series docs match (108 rows). Needs a fresh ZFI06 run without that selection.
+
+## Changes log - 2026-09-21: RCM POS check NA without vendor GSTIN; RCM GL FY 24-25 restricted to Mar-25 (CA Priyesh recordings)
+
+- **POS block** (`As per State / As per Amounts / POS Check`, rcm_pos_na.py): each formula wrapped
+  `=IF(OR($G6="",TEXT($G6,"0")="0",$G6="NA",LEN($G6)<15),"NA",<old>)` - 2,819 register rows without a vendor GSTIN show NA
+  (recording 1: "POS check is not applicable where there is no GSTIN"). `Query` / `Query Description` hold no formula - untouched.
+- **RCM GL (rcm_gl_rebuild.py, ruling (a), recording 2 ≈14:30)**: the CA only needs the Mar-25 OUTPUT documents claimed in Apr-25,
+  not the whole FY 24-25 output GL (7,440 rows). Code now keeps only Mar-25 postings from `RCM Output FY 2024-25.xlsx`
+  (`_pd.year == 2025 and _pd.month == 3`), Output label `FY 24-25 – Mar-25 RCM claimed Apr-25`, Input label for FY 26-27 postings
+  `FY 26-27 posting – Apr-26 claim of Mar-26 RCM (FY 26-27 scope)`. NOT YET RUN: the 21-09 chain aborted on this step because the
+  `\192.168.1.69` share dropped (files unreadable) - it fails before opening the master, so nothing was written. Re-run alone when
+  the share is back; expected: register `Found in Output GL` unchanged (3,502 / 3,503 pattern), Statewise RCM vs 3B diff unchanged
+  (the GL is a check column, not a source), 0 error cells; then export the xlsb.
+- RCM lines in the ITC Register 2025-26 carry remark `12 – Not applicable – RCM self-invoice` (2,527 lines) in the numbered
+  vocabulary shared with the ITC skill (see gst-audit-vel-itc changes log 21-09 batch 3).

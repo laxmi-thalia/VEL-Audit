@@ -75,7 +75,7 @@ normf = lambda e: 'UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(
 for r in range(3, NB + 1):
     ws.cell(r, base + 4).value = "=" + normf("%s%d&%s%d" % (c("Supplier GSTIN"), r, c("Doc No"), r))
     ws.cell(r, base + 5).value = '=IFERROR(INDEX(%s,MATCH($%s%d,%s,0)),"")' % (RG("3B Claim  Month"), c("KEY"), r, RG("KEY2 (matched 2B key)")); ws.cell(r, base + 5).number_format = "mmm-yy"
-    ws.cell(r, base + 6).value = '=IF($%s%d="","Not in ITC Register – FY 25-26 claims","Matched with ITC Register – claimed "&TEXT($%s%d,"mmm-yy"))' % (c("3B Claim Month"), r, c("3B Claim Month"), r)
+    ws.cell(r, base + 6).value = "=IFERROR(INDEX('ITC Register 2025-26'!$%s$6:$%s$%d,MATCH($%s%d,'ITC Register 2025-26'!$%s$6:$%s$%d,0)),\"11 – Not in books – FY 25-26 claims\")" % (RH["Reco Remarks"], RH["Reco Remarks"], RN, c("KEY"), r, RH["KEY2 (matched 2B key)"], RH["KEY2 (matched 2B key)"], RN)   # numbered mirror of the register remark (CA 21-09)
     ws.cell(r, base + 7).value = '=IF($%s%d="2024-25",IF($%s%d="","Table 6A1 – FY 24-25 invoice – unclaimed",IF($%s%d="2024-25","Table 6A1 – FY 24-25 invoice in 2B of FY 24-25 – claimed","Table 6A1 – FY 24-25 invoice in 2B of FY 25-26 – claimed")),"")' % (c("Doc FY (doc date)"), r, c("3B Claim Month"), r, c("FY (2B period)"), r)
     ws.cell(r, base + 8).value = ('=IF($%s%d<>"2025-26","No – 2B period FY "&RIGHT($%s%d,5),IF($%s%d="Yes","No – RCM",IF($%s%d="No","No – ITC not available",IF($%s%d="Yes","No – amendment",IF($%s%d<>"2025-26","No – FY "&RIGHT($%s%d,5)&" document","Yes")))))'
                                   % (c("FY (2B period)"), r, c("FY (2B period)"), r, c("Reverse Charge"), r, c("GSTR-9 (8A) ITC Available"), r, c("Is Amendment"), r, c("Doc FY (doc date)"), r, c("Doc FY (doc date)"), r))

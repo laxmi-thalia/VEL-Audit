@@ -37,6 +37,9 @@ for fn in FILES:
     for r in raw[hi + 1:]:
         doc = S(r[H["Document Number"]])
         if not doc.isdigit(): continue
+        if fn.startswith("RCM Output FY 2024-25"):
+            _pd = r[H["Posting Date"]]
+            if not (isinstance(_pd, dt.datetime) and _pd.year == 2025 and _pd.month == 3): continue      # Mar-25 only (claimed Apr-25)
         acct = S(r[H["G/L Account"]]); acct = str(int(float(acct))) if acct.replace(".", "").isdigit() else acct
         side = "Output" if acct.startswith("26100803") else ("Input" if acct.startswith("19100605") else "")
         bp = S(r[H["Business place"]]); pdt = r[H["Posting Date"]]; ddt = r[H["Document Date"]]
@@ -88,8 +91,8 @@ try:
     # register account may be numeric (2610080300) or the Conso combined label '2610080300-01' (CGST+SGST): expected register amount by key
     reg_amt_for = lambda acct_expr: "SUMIFS(%s,%s,$%s6,%s,%s)" % (RR("Amount in Local Currency"), RR("GL Key"), C["GL Key"], RR("G/L Account"), acct_expr)
     ws.Range("%s6:%s%d" % (C["Matched with RCM Register (Output)"], C["Matched with RCM Register (Output)"], NG)).Formula = (
-        '=IF($%s6<>"Output","",IF(COUNTIFS(%s,$%s6)>0,"Matched with RCM Register",IF($%s6<>"2025-26","Other period ("&$%s6&")",IF($%s6>0,"Debit line (payment / utilisation) - not a liability booking","NOT IN RCM REGISTER (FY 25-26)"))))'
-        % (C["Side"], RR("GL Key"), C["GL Key"], C["Posting FY"], C["Posting FY"], C["Amount in Local Currency"]))
+        '=IF($%s6<>"Output","",IF(COUNTIFS(%s,$%s6)>0,"Matched with RCM Register",IF($%s6<>"2025-26",IF($%s6="2024-25","FY 24-25 – Mar-25 RCM claimed Apr-25","Other period ("&$%s6&")"),IF($%s6>0,"Debit line (payment / utilisation) - not a liability booking","NOT IN RCM REGISTER (FY 25-26)"))))'
+        % (C["Side"], RR("GL Key"), C["GL Key"], C["Posting FY"], C["Posting FY"], C["Posting FY"], C["Amount in Local Currency"]))
     # amount check: GL credit lines of this key+account vs register lines of this key (same account, or the combined 300-01 label for CGST/SGST)
     gl_amt = "SUMIFS(%s,%s,$%s6,%s,$%s6)" % (GLR("Amount in Local Currency"), GLR("GL Key"), C["GL Key"], GLR("G/L Account"), C["G/L Account"])
     # Register conventions (verified 18-09): Conso rows carry ONE line per document for CGST/SGST labelled 2610080300 or
@@ -103,8 +106,8 @@ try:
         % (C["Matched with RCM Register (Output)"], C["Amount in Local Currency"], gl_amt, reg_amt, gl_amt, reg_amt))
     out_acct = '"26100803"&RIGHT($%s6,2)' % C["G/L Account"]
     ws.Range("%s6:%s%d" % (C["Matched with RCM Register (Input)"], C["Matched with RCM Register (Input)"], NG)).Formula = (
-        '=IF($%s6<>"Input","",IF(COUNTIFS(%s,$%s6)>0,"Matched with RCM Register (same document)",IF($%s6<>"2025-26","Other period ("&$%s6&")",IF($%s6<0,"Credit line (utilisation / reversal) - not an ITC booking","NOT IN RCM REGISTER (FY 25-26)"))))'
-        % (C["Side"], RR("GL Key"), C["GL Key"], C["Posting FY"], C["Posting FY"], C["Amount in Local Currency"]))
+        '=IF($%s6<>"Input","",IF(COUNTIFS(%s,$%s6)>0,"Matched with RCM Register (same document)",IF($%s6="2026-27","FY 26-27 posting – Apr-26 claim of Mar-26 RCM (FY 26-27 scope)",IF($%s6<>"2025-26","Other period ("&$%s6&")",IF($%s6<0,"Credit line (utilisation / reversal) - not an ITC booking","NOT IN RCM REGISTER (FY 25-26)")))))'
+        % (C["Side"], RR("GL Key"), C["GL Key"], C["Posting FY"], C["Posting FY"], C["Posting FY"], C["Amount in Local Currency"]))
     reg_amt_in = reg_amt   # same leg rule: input xx00/01/02 pairs with output 300/301/302
     ws.Range("%s6:%s%d" % (C["Match Remarks (Input)"], C["Match Remarks (Input)"], NG)).Formula = (
         '=IF($%s6<>"Matched with RCM Register (same document)","",IF($%s6<0,"",IF(ABS(%s+%s)<0.5,"","Amount differs: Input GL "&TEXT(%s,"#,##0.00")&" vs register "&TEXT(-%s,"#,##0.00"))))'

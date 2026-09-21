@@ -337,3 +337,53 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   'Claimed/Unclaimed', 'Correction Entries- ITC dated 24-25 reversed in 25-26', Countif 'Consider/Not consider', T6A1 Source labels.
 - ITC Register 'Tax Rate' is a live formula = Total GST / Taxable Value x 100 (7 rows differ >0.5 from the client's stated rate).
 - 'Table 13 & 6A1 differences' Remarks: Matched when ABS(Total) < 10 (was < 1).
+
+## Changes log - 2026-09-21 (batch 3): reco_lib, numbered mirrored remarks, Octa FY 24-25 2B base, FY 26-27 reco (Pawan + CA Priyesh recordings)
+
+- **Matching is one tested module**: `vel/scripts/reco_lib.py` (`match_register`, `zkey`, `classify_vendor_gstin`, vocabulary `V`;
+  12 tests in `tests/vel/test_reco_lib.py`). cascade_fix.py (FY 25-26) and fy2627_reco.py (FY 26-27) both call it. Layers:
+  1 exact GSTIN + zero-insensitive invoice (recipient checked), 1b malformed GSTIN rescued by PAN + exact invoice, 2 GSTIN + document
+  amount ±100 (same recipient, single candidate) / similar invoice + amount, 2b line date+amount / amount single candidate, 4 FY 24-25 2B.
+  `zkey` strips leading zeros per digit run BEFORE removing separators (`SDIP/25-26/007` == `.../7`).
+- **Numbered remark vocabulary (CA Priyesh, recording 2, 21-09)** - the SAME numbered text on the register and on the 2B sheet so
+  a filter on "1 –" ties 1-1 on both sides; only `10 – Not in 2B – Apr-25 to Aug-26` (books only) and `11 – Not in books – FY 25-26
+  claims` (2B only) differ. Register FY 25-26 (44,310 lines): 1 exact 32,075 | 2 recipient GSTIN differs 1 | 3 vendor GSTIN corrected
+  from 2B 17 | 4 amount & date tie 2,714 | 5 similar invoice + amount 311 | 6 GSTIN + amount 457 | 7 date + amount 82 | 8 amount only 1 |
+  9 FY 24-25 2B 1,164 | 10 not in 2B 4,948 | 12 RCM 2,527 | 14 URD 7 | 15 vendor GSTIN invalid 2 (MSEDCL, 16 chars).
+  Ruling (b): when the document amounts tie to the rupee AND the dates agree, remark 4 carries NO "– review" (only the invoice number is
+  written differently) - 2,714 lines left the review pile. Remarks are VALUES on the register (CAs edit them); the 2B sheet's
+  `Reco Remarks` is a LIVE lookup of the register remark by KEY (25-26 register first, then 26-27, else remark 11) - remarks_mirror.py:
+  2B side 13,867 docs = 11 not in books 7,239 | 1 5,958 | 4 454 | 6 93 | 7 85 | 5 27 | 2 5 | 3 5 | 8 1 (was 7,405 / 6,462 with the old
+  claim-month formula; the extra 166 matches come from the FY 26-27 register).
+- **Vendor GSTIN "URD" confusion fixed**: `classify_vendor_gstin` - blank / `0` / `NA` / `Missing` = no GSTIN (remark 14 or RCM/ISD 12/13);
+  14- or 16-char values = malformed, never URD: rescued by PAN + exact invoice (remark 3, 17 lines) or `15 – Not matched – vendor GSTIN
+  invalid (n chars) – review` (2 lines). Countif labels follow (`Not consider - vendor GSTIN invalid` 2, `... no vendor GSTIN` 7).
+- **Recipient GSTIN mismatch is precise**: `2 – Matched with 2B – invoice no – recipient GSTIN differs (2B under <GSTIN>) – review`
+  names the VEL GSTIN the 2B document sits under (1 register line; 5 2B docs on the mirrored side).
+- **`GSTR-2B ITC Data` = the Octa PAN-level FY 24-25 export** (`Audit Data of FY 2024-25\PAN GSTR2B 2024-25.xlsx`, rebuild_2b_itc_data.py):
+  10,322 documents + 188 ISD, CDN negative, per-row IGST+CGST+SGST == Total Tax Value gate; header row 5 and the helper KEY column kept
+  (KEY = supplier GSTIN + invoice + "|" + FY). FY 24-25-matched register lines (remark 9) are `Consider` and take 2B_ from this sheet by
+  that key (ruling (d)) - 2B_ 87.03 cr, D_ 6.72 cr on B_ 93,75,28,722.19 (== ITC-category tax).
+- **Permanent reversals from last year's 9C** (perm_reversals_ly.py): 1,532 LY-flagged documents -> 2B Apr25-Aug26 col BG (5 rows) and
+  `GSTR-2B ITC Data` new column `Permanent Reversals (LY 9C)` (1,549 rows); ITC Summary CE:CG C/SGST +236.74 each.
+- **T6A1 Extract `2B Return Period` keyed on GSTIN + invoice + invoice FY** (Pawan's `VEL 21.9.26.docx`: supplier `09DCEPK6815A2ZS`
+  invoice `3` exists in FY 23-24 AND FY 25-26 - a plain VLOOKUP picked Oct-23). Helper `KEY+FY` column on the CY 2B sheet (`=$AW3&"|"&$AV3`).
+  Extract 3,395 rows: 1,354 dated (FY 24-25 2B 1,185 / Apr-25..Aug-26 169), 2,041 not in 2B.
+- **ITC Register 2026-27 reconciled in the 25-26 format** (fy2627_reco.py; columns KEY … Reco Remarks APPENDED after the last header -
+  ITC Summary reads this sheet by letter, never insert in the middle): 2,109 lines = 181 SAP documents (RA bills carry up to 97 GL
+  lines) -> Countif Consider 181 / Not consider 1,928; verdicts 1 1,290 | 4 218 | 5 26 | 6 48 | 7 2 | 10 525; B_ 2,42,80,458.10 == ITC tax,
+  2B_ 2,36,63,716.09, D_ 6,16,742.01. `2B_` reads `GSTR-2B Apr25-Aug26` V/W/X by KEY AW.
+- Chain order now: b2_remerge_2627 → strip_orphan_pivots → readd_buttons2 → cascade_fix → final_countif_rule → t6a1_2b_period →
+  fy2627_reco → remarks_mirror → rcm_gl_rebuild (vel/scripts/chain4.sh, ~11 min, one COM session per script). Verified after chain4:
+  0 error cells, golden 1,06,99,69,542.15, Net-ITC 0.00, ITC Summary 6A1 blocks unchanged [2,67,48,108.62 / 1,45,33,807.83 /
+  3,75,19,734.83 / 78,67,313.94 / 26,09,545.00], ITCR vs 3B net 2,52,024.32.
+- Recordings 21-09 (0922 = 9 min, 0931 = 35 min) transcribed locally (faster-whisper medium, translate mode) to
+  `Downloads\Meeting 21-09-2026 09xx - Transcript (English).md`; frames reviewed (RCM POS block, 2B Doc No filter, PY 2B_ zeros).
+- Read-back after chain4 (document numbers only): remark 2 (recipient GSTIN differs) 5 lines / 4 docs - 2900003093 (2B under 09…),
+  2900010470 / 2900011320 / 2900012213 (vendor 23…, 2B under 22…), 2900004027 (2B under 10…); remark 3 (GSTIN corrected from 2B)
+  17 lines / 2 vendors - 2900003829 (8 lines, 14-char GSTIN), 2900005509 / 5003 / 5691 / 5698 (14-char); remark 15 (unresolved)
+  2 lines - 3500021788 / 3500021787 (MSEDCL, 16 chars). Docx row (Bihar, supplier 09DCEPK6815A2ZS, invoice 3): `Not in 2B (Apr-24 to Aug-26)`.
+- Known stray: `T6A1 Extract - 24-25`!V4 holds the constant text `#VALUE!` (pre-existing, not a formula error; SpecialCells reports 0).
+- **Pending (server down at 19:45 on 21-09)**: rcm_gl_rebuild.py with the Mar-25 restriction (ruling (a)) could not read the FBL3N dumps
+  from `\192.168.1.69` (three `RCM Output *.xlsx` unreadable, then the share dropped). It failed BEFORE opening the master - the master
+  carries the first five chain steps. Re-run `rcm_gl_rebuild.py` alone when the share is back, then export the xlsb.

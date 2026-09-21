@@ -51,7 +51,7 @@
   - `Verdict = dict(verdict: str, key2: str, consider_key: str)`
   - `match_register(reg: list[dict], b2: list[dict], py_keys: set[str], py_dates: set[tuple]) -> list[Verdict]` — `reg` rows have keys `vendor_gstin, invoice, invoice_date, invoice_year, category, vel_gstin, igst, cgst, sgst`; `b2` rows have `supplier_gstin, doc_no, doc_date, company_gstin, key, igst, cgst, sgst`. Returns one Verdict per register row, in order.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/vel/test_reco_lib.py
@@ -120,12 +120,12 @@ def test_prior_year_2b_layer():
     assert v["verdict"] == "Matched with 2B of FY 24-25 – Table 6A1" and v["key2"].startswith("PY:")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run (from `C:\PROJECTS\gst-audit-engine`): `C:\PROJECTS\accountic\backend\.venv\Scripts\python.exe -m pytest tests/vel/test_reco_lib.py -q`
 Expected: `ImportError`/`ModuleNotFoundError: vel.scripts.reco_lib` (create empty `vel/__init__.py` and `vel/scripts/__init__.py` if the import path itself fails).
 
-- [ ] **Step 3: Implement `reco_lib.py`**
+- [x] **Step 3: Implement `reco_lib.py`**
 
 ```python
 # vel/scripts/reco_lib.py
@@ -243,12 +243,12 @@ def match_register(reg, b2, py_keys, py_dates):
     return [{"verdict": verdict[i], "key2": key2[i]} for i in range(N)]
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `C:\PROJECTS\accountic\backend\.venv\Scripts\python.exe -m pytest tests/vel/test_reco_lib.py -q`
 Expected: `10 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\PROJECTS\gst-audit-engine && git add vel/__init__.py vel/scripts/__init__.py vel/scripts/reco_lib.py tests/vel && git commit -m "feat(vel-itc): reco_lib - shared, tested matching rules (malformed GSTIN rescue, recipient check)"
@@ -265,7 +265,7 @@ cd C:\PROJECTS\gst-audit-engine && git add vel/__init__.py vel/scripts/__init__.
 - Consumes: `reco_lib.match_register`, `reco_lib.zkey/norm/fy/fy_of_label/S/num`.
 - Produces: `verdict[i]`, `key2[i]` lists exactly as before (downstream stamping, Countif labels, six/sixrem, extract rebuild unchanged). Verdict prefixes the downstream code tests: `Matched with 2B of FY 24-25`, `Not in 2B`, `Not applicable` — keep them.
 
-- [ ] **Step 1: Replace the matching passes with a call into reco_lib**
+- [x] **Step 1: Replace the matching passes with a call into reco_lib**
 
 Delete everything from `# ---------------- 2B indices` up to (not including) `# ---------------- Consider + labels` and put:
 
@@ -284,16 +284,16 @@ print("verdicts:", dict(collections.Counter(v.split(" – ")[0] for v in verdict
 
 (`o_z`/`o_dt` are the FY 24-25 2B dicts already built above from `GSTR-2B ITC Data`; `set(o_z)` gives the zero-insensitive keys, `set(o_dt)` the `(gstin, date, total)` tuples. `b2key` is still used by the extract rebuild.)
 
-- [ ] **Step 2: Fix the label tests below to the new prefixes**
+- [x] **Step 2: Fix the label tests below to the new prefixes**
 
 In the `# ---------------- Consider + labels` block keep `v.startswith("Matched with 2B of FY 24-25")`, `v.startswith("Not in 2B")`, `v.startswith("Not applicable")`; add: rows whose verdict starts with `"Not matched – vendor GSTIN invalid"` get label `"Not consider - vendor GSTIN invalid"` and `six = None`.
 
-- [ ] **Step 3: Dry-run the matching only (no COM)**
+- [x] **Step 3: Dry-run the matching only (no COM)**
 
 Run: `python -X utf8 -c "exec(open('cascade_fix.py',encoding='utf-8').read().split('# ---------------- T6A1 extract rows')[0])"` from the scratchpad (master closed).
 Expected: `verdicts:` line shows `Matched with 2B ≈ 35,700`, `Not in 2B ≈ 5,081`, `Not applicable ≈ 2,527 + 0 URD`, `Not matched – vendor GSTIN invalid ≤ 26` (some of the 26 rescued by PAN), and 5 verdicts containing `recipient GSTIN differs`. Anything else → stop and inspect.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add vel/scripts/cascade_fix.py && git commit -m "refactor(vel-itc): cascade_fix matches through reco_lib (malformed GSTIN + recipient remarks)"
@@ -310,7 +310,7 @@ git add vel/scripts/cascade_fix.py && git commit -m "refactor(vel-itc): cascade_
 - Consumes: `\\192.168.1.69\gst folder\…\VEL\Audit Data of FY 2024-25\PAN GSTR2B 2024-25.xlsx` — sheet `Inv+CDN(Document level)` (header row 3: `My GSTIN, 2B Return Period (MMYYYY text), Supplier GSTIN, Supplier Legal Name, Document Type, Section Name, Supply Type, Document Date (dd/mm/yyyy text), Document Number, Total Taxable Value, Total Tax Value, IGST Amount, CGST Amount, SGST Amount, CESS Amount, Total Document Value, State Place of Supply, Is Reverse Charge Appl…, GSTR-1 filing period, GSTR-1 filing date, Itc Availability, Reason for Non Account…`; row 1 holds column totals IGST/CGST/SGST/Cess) and sheet `ISD + ISDA` (header rows 1–2, 187 rows).
 - Produces: `GSTR-2B ITC Data` with the SAME header row 5 as today (27 columns A..AA, KEY in AB — `cascade_fix.py` reads `FY (derived)`, `GSTIN of supplier`, `Invoice number`, `Invoice Date`, `Integrated Tax(₹)`, `Central Tax(₹)`, `State/UT Tax(₹)` by name; `t6a1_2b_period.py` asserts `2B Return Period`=D, `GSTIN of supplier`=G, `Invoice number`=I and uses the KEY column found after AA). Rows 6.. replaced; sheet stays hidden.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```python
 """GSTR-2B ITC Data (FY 24-25 2B base) rebuilt from Octa's PAN-level export 'PAN GSTR2B 2024-25.xlsx' (Pawan 21-09) - replaces
@@ -388,12 +388,12 @@ finally: xl.Quit()
 
 (If the `Is Reverse Charge` / `GSTR-1 … Filing Period` / `Reason` header spellings differ, print `h` and adjust the three `startswith` prefixes — do not guess column letters.)
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 Run from the scratchpad: `python -X utf8 rebuild_2b_itc_data.py`
 Expected: `documents 10323 (+ISD 187)`, the IGST/CGST/SGST line equal to the file's row-1 totals (49,19,627.35 / 11,22,193.14 / 11,22,193.14 — the assertion enforces it), `error cells 0`, golden `1069969542.15`, `saved + xlsb`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add vel/scripts/rebuild_2b_itc_data.py && git commit -m "feat(vel-itc): GSTR-2B ITC Data rebuilt from the Octa PAN-level FY 24-25 export"
@@ -410,7 +410,7 @@ git add vel/scripts/rebuild_2b_itc_data.py && git commit -m "feat(vel-itc): GSTR
 - Consumes: `VEL_GSTR 9_9C FY 24-25.xlsb` sheet `GSTR-2B Apr 24-Oct 25` (header row 4: `My GSTIN`, `Supplier GSTIN`, `Document Number`, `Permanent Reversals`, `Reclaim - Table 6H`), read with pyxlsb from the local copy `scratchpad\VEL_2425.xlsb` (copy the file if absent; COM/pyxlsb cannot read UNC reliably).
 - Produces: `GSTR-2B Apr25-Aug26` column `Permanent Reversals` (BG) = `"Permanent Reversals"` on rows whose (Company GSTIN, Supplier GSTIN, zkey(Doc No)) is flagged last year; new column `Permanent Reversals (LY 9C)` appended after `KEY` on `GSTR-2B ITC Data` with the same flag. ITC Summary CE:CG (Table 8C block) sums BG — the delta is reported, and it is the expected effect of this task.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```python
 """Stamp last year's 'Permanent Reversals' flags (VEL_GSTR 9_9C FY 24-25.xlsb, sheet 'GSTR-2B Apr 24-Oct 25') into
@@ -467,9 +467,9 @@ try:
 finally: xl.Quit()
 ```
 
-- [ ] **Step 2: Run it** — Expected: `LY flagged documents: permanent reversals ≥ 468`, stamped counts > 0 on both sheets, `error cells 0`, CE:CG delta printed (report it to Pawan — it is the intended change).
+- [x] **Step 2: Run it** — Expected: `LY flagged documents: permanent reversals ≥ 468`, stamped counts > 0 on both sheets, `error cells 0`, CE:CG delta printed (report it to Pawan — it is the intended change).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add vel/scripts/perm_reversals_ly.py && git commit -m "feat(vel-itc): last year's permanent-reversal flags stamped into both 2B sheets"
@@ -481,7 +481,7 @@ git add vel/scripts/perm_reversals_ly.py && git commit -m "feat(vel-itc): last y
 
 **Files:** none new — run `cascade_fix.py` → `final_countif_rule.py` → `t6a1_2b_period.py` from the scratchpad (master closed).
 
-- [ ] **Step 1: Snapshot and run the chain, capturing the log**
+- [x] **Step 1: Snapshot and run the chain, capturing the log**
 
 ```bash
 cp "/c/Users/pawar/Downloads/VEL_GST_Audit_FY2025-26_MASTER (2).xlsx" master2_snapshot_before_chain2.xlsx
@@ -489,16 +489,16 @@ PY=/c/PROJECTS/accountic/backend/.venv/Scripts/python.exe
 { $PY -X utf8 cascade_fix.py; $PY -X utf8 final_countif_rule.py; $PY -X utf8 t6a1_2b_period.py; } > chain2.log 2>&1; grep -v SyntaxWarning chain2.log
 ```
 
-- [ ] **Step 2: Check the log against these expectations**
+- [x] **Step 2: Check the log against these expectations**
 
 - `verdicts:` — `Not applicable` = RCM 2,527 + ISD 171 only (URD 0); `Not matched – vendor GSTIN invalid` ≤ 26; `Matched with 2B of FY 24-25` may change from 932 (new FY 24-25 base) — report the new number.
 - `error cells: 0`, `Total GST golden 1069969542.15`, `Net-ITC diff [-0.0, 0.0, 0.0]`, `B_Total (all ITC docs) 937528722.19`.
 - `t6a1`: `2B Return Period` distribution printed; `Not in 2B` should drop versus 1,773 (report).
 - Any assertion or `Traceback` → restore `master2_snapshot_before_chain2.xlsx` and stop.
 
-- [ ] **Step 3: Read the five recipient-mismatch rows and the ≤26 malformed rows back (COM read-only) and paste their verdicts into the report (document numbers are fine, no vendor names).**
+- [x] **Step 3: Read the five recipient-mismatch rows and the ≤26 malformed rows back (COM read-only) and paste their verdicts into the report (document numbers are fine, no vendor names).**
 
-- [ ] **Step 4: Commit the scratchpad scripts copied to the repo**
+- [x] **Step 4: Commit the scratchpad scripts copied to the repo**
 
 ```bash
 cp cascade_fix.py final_countif_rule.py t6a1_2b_period.py /c/PROJECTS/gst-audit-engine/vel/scripts/ && cd /c/PROJECTS/gst-audit-engine && git add -A && git commit -m "chore(vel-itc): chain re-run after 2B base rebuild"
@@ -515,7 +515,7 @@ cp cascade_fix.py final_countif_rule.py t6a1_2b_period.py /c/PROJECTS/gst-audit-
 - Consumes: `reco_lib.match_register` (b2 = `GSTR-2B Apr25-Aug26` rows, all periods; `py_keys`/`py_dates` empty — FY 25-26 invoices never sit in the FY 24-25 2B); register = `ITC Register 2026-27` rows 5.. (header row 4; columns `Vendor GSTIN`, `Invoice No.`, `Invoice Date`, `Invoice Year`, `Category`, `VEL GSTN`, `IGST`, `CGST`, `SGST`, `Vendor Name/RCM Category`).
 - Produces: columns APPENDED after the last header (`Source`) in this order and with these exact headers: `KEY`, `Countif`, `B_IGST`, `B_CGST`, `B_SGST`, `B_Total GST`, `KEY2 (matched 2B key)`, `2B_IGST`, `2B_CGST`, `2B_SGST`, `2B_Total GST`, `D_IGST`, `D_CGST`, `D_SGST`, `D_Total GST`, `Reco Remarks` — same semantics as the 25-26 register: `KEY` formula (vendor GSTIN & normalised invoice), `Countif` value `Consider` on the first line of each (vendor GSTIN or vendor name + normalised invoice) / `Not consider` others / blank for RCM-ISD, `B_` = SUMIFS by own KEY + vendor name on Consider lines, `KEY2` value, `2B_` = SUMIFS of `GSTR-2B Apr25-Aug26` V/W/X by KEY2 (0 when blank), `D_ = B_ − 2B_`, `Reco Remarks` value (21-09 vocabulary). Existing `Available in 2B` / `2B Inv` / `2B Period` / `Final Remarks` are left in place.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```python
 """ITC Register 2026-27: 2B reconciliation in the FY 25-26 format (Pawan 21-09) - KEY / Countif / B_ / KEY2 / 2B_ / D_ / Reco Remarks
@@ -583,9 +583,9 @@ try:
 finally: xl.Quit()
 ```
 
-- [ ] **Step 2: Run it** — Expected: `rows 2109`, verdict counts, `Countif {Consider ≈ 2000, Not consider ≈ 100}`, `B_Total == ITC tax 24,280,458.10` (assertion), `error cells 0`, FY 25-26 golden unchanged, `saved + xlsb`.
+- [x] **Step 2: Run it** — Expected: `rows 2109`, verdict counts, `Countif {Consider ≈ 2000, Not consider ≈ 100}`, `B_Total == ITC tax 24,280,458.10` (assertion), `error cells 0`, FY 25-26 golden unchanged, `saved + xlsb`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add vel/scripts/fy2627_reco.py && git commit -m "feat(vel-itc): ITC Register 2026-27 reconciled to 2B in the FY 25-26 format"
@@ -598,11 +598,11 @@ git add vel/scripts/fy2627_reco.py && git commit -m "feat(vel-itc): ITC Register
 **Files:**
 - Modify: `.claude/skills/gst-audit-vel-itc/SKILL.md` (repo copy and `C:\PROJECTS\accountic\.claude\skills\gst-audit-vel-itc\SKILL.md`), `vel/HANDOFF.md`
 
-- [ ] **Step 1: Append a dated changes-log entry (both skill copies)** covering: reco_lib as the single matching implementation; malformed-GSTIN vocabulary (`Not matched – vendor GSTIN invalid (n chars) – review`, PAN rescue text); recipient-differs suffix; `GSTR-2B ITC Data` = Octa PAN-level FY 24-25 export (row-1 totals as the tie-out); permanent-reversal flags from the LY 9C (with the CE:CG delta); FY 26-27 reco columns appended after `Source`; the numbers printed by Tasks 5 and 6.
+- [x] **Step 1: Append a dated changes-log entry (both skill copies)** covering: reco_lib as the single matching implementation; malformed-GSTIN vocabulary (`Not matched – vendor GSTIN invalid (n chars) – review`, PAN rescue text); recipient-differs suffix; `GSTR-2B ITC Data` = Octa PAN-level FY 24-25 export (row-1 totals as the tie-out); permanent-reversal flags from the LY 9C (with the CE:CG delta); FY 26-27 reco columns appended after `Source`; the numbers printed by Tasks 5 and 6.
 
-- [ ] **Step 2: Update `vel/HANDOFF.md` "Verified state" and "Open items"** (remove the resolved items, keep ZFI06 / IMS columns / missing Octa states).
+- [x] **Step 2: Update `vel/HANDOFF.md` "Verified state" and "Open items"** (remove the resolved items, keep ZFI06 / IMS columns / missing Octa states).
 
-- [ ] **Step 3: Commit and push**
+- [x] **Step 3: Commit and push**
 
 ```bash
 git add -A && git commit -m "docs(vel): batch-3 rulings and handoff state" && GIT_TERMINAL_PROMPT=0 git push
@@ -621,19 +621,52 @@ git add -A && git commit -m "docs(vel): batch-3 rulings and handoff state" && GI
 - Consumes: `GSTR-2B ITC Data` col `FY (derived)` (B) and its helper KEY column; `GSTR-2B Apr25-Aug26` col `Doc FY (doc date)` (AV) and `KEY` (AW); extract cols `GSTIN of supplier` (J), `Invoice Date` (L), `Invoice number` (M).
 - Produces: helper `KEY+FY` columns on both 2B sheets (`GSTR-2B ITC Data`: rewrite the existing helper to `=<KEY>&"|"&$B6`; `GSTR-2B Apr25-Aug26`: new column after the last header `=$AW3&"|"&$AV3`) and the extract formula in C using key `=<norm(J&M)>&"|"&<FY of L>` where FY of L = `IF(MONTH($L5)>=4,YEAR($L5)&"-"&RIGHT(YEAR($L5)+1,2),YEAR($L5)-1&"-"&RIGHT(YEAR($L5),2))`.
 
-- [ ] **Step 1: Change the helper KEY formula on `GSTR-2B ITC Data`** (in `t6a1_2b_period.py`, the line `o.Range(... KL ...).Formula = "=" + norm("$G6&$I6")`) to `"=" + norm("$G6&$I6") + '&"|"&$B6'`; rename the header to `KEY (supplier GSTIN + invoice + FY, normalised)`.
+- [x] **Step 1: Change the helper KEY formula on `GSTR-2B ITC Data`** (in `t6a1_2b_period.py`, the line `o.Range(... KL ...).Formula = "=" + norm("$G6&$I6")`) to `"=" + norm("$G6&$I6") + '&"|"&$B6'`; rename the header to `KEY (supplier GSTIN + invoice + FY, normalised)`.
 
-- [ ] **Step 2: Add the CY helper on `GSTR-2B Apr25-Aug26`**: find the first empty header cell on row 2 after the last DPS column, write `KEY+FY`, fill rows 3..NB with `=$AW3&"|"&$AV3`; remember its letter as `CYK`.
+- [x] **Step 2: Add the CY helper on `GSTR-2B Apr25-Aug26`**: find the first empty header cell on row 2 after the last DPS column, write `KEY+FY`, fill rows 3..NB with `=$AW3&"|"&$AV3`; remember its letter as `CYK`.
 
-- [ ] **Step 3: Rewrite the extract lookup formula** `f` so that `key` = `norm("$J5&$M5") & '&"|"&IF(MONTH($L5)>=4,YEAR($L5)&"-"&RIGHT(YEAR($L5)+1,2),YEAR($L5)-1&"-"&RIGHT(YEAR($L5),2))'` and the CY `MATCH` runs against `'GSTR-2B Apr25-Aug26'!$<CYK>$3:$<CYK>$NB` instead of `$AW`.
+- [x] **Step 3: Rewrite the extract lookup formula** `f` so that `key` = `norm("$J5&$M5") & '&"|"&IF(MONTH($L5)>=4,YEAR($L5)&"-"&RIGHT(YEAR($L5)+1,2),YEAR($L5)-1&"-"&RIGHT(YEAR($L5),2))'` and the CY `MATCH` runs against `'GSTR-2B Apr25-Aug26'!$<CYK>$3:$<CYK>$NB` instead of `$AW`.
 
-- [ ] **Step 4: Run the script** (after Task 3, master closed). Expected: the docx row (Bihar, supplier `09DCEPK6815A2ZS`, invoice `3`, FY 24-25) now shows a FY 24-25 2B period or `Not in 2B (Apr-24 to Aug-26)` — never Oct-23; distribution printed; `error cells 0`.
+- [x] **Step 4: Run the script** (after Task 3, master closed). Expected: the docx row (Bihar, supplier `09DCEPK6815A2ZS`, invoice `3`, FY 24-25) now shows a FY 24-25 2B period or `Not in 2B (Apr-24 to Aug-26)` — never Oct-23; distribution printed; `error cells 0`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add vel/scripts/t6a1_2b_period.py && git commit -m "fix(vel-itc): T6A1 2B Return Period lookup keyed on GSTIN + invoice + invoice FY"
 ```
+
+---
+
+### Task 9: RCM Register POS check — NA when there is no vendor GSTIN (recording 1, CA Priyesh, 21-09)
+
+**Files:**
+- Create: `vel/scripts/rcm_pos_na.py`
+
+**Problem (seen on screen at 00:20 of the first recording):** with the `Vendor` filter on blank/`0`, `My GSTN` = `01`, `As per State` still reads `Inter State`, `As per Amounts` `Intra State`, `POS Check` `FALSE` — 2,819 of 3,631 rows. The CA: "if my vendor GSTIN is 0 / blank / NA, the remark should not come there — it will be NA."
+
+**Interfaces:**
+- Consumes: `RCM Register` header row 5 columns `Vendor` (vendor state code from vendor GSTIN), `Vendor state code`, `As per State`, `As per Amounts`, `POS Check`, `Query`, `Query Description` (the POS block, cols ~55–61), formulas on row 6.
+- Produces: the same columns wrapped so that when the vendor GSTIN is blank / `0` / `NA` / shorter than 15 chars they return `"NA"` (text) and `POS Check` returns `"NA"`; otherwise the existing formula is unchanged. Formula-based (the CA asked for these to stay formulas — only the ITC remarks are values).
+
+- [x] **Step 1: Read the row-6 formulas of the POS block and the vendor-GSTIN column letter** (COM read, print them). Do not proceed if the block header names differ from `Vendor | My GSTN | As per State | As per Amounts | POS Check | Query | Query Description`.
+
+- [x] **Step 2: Wrap each formula** `=<old>` → `=IF(OR($<G>6="",$<G>6="0",$<G>6="NA",LEN($<G>6)<15),"NA",<old without leading '='>)` where `<G>` is the vendor-GSTIN column letter (`GSTN`), for `As per State`, `As per Amounts`, `POS Check`, `Query`, `Query Description`; write the wrapped formula to rows 6..RN in one `Range.Formula` call per column (relative refs adjust).
+
+- [x] **Step 3: Recalc, verify:** rows with blank/0 vendor GSTIN show `NA` in all five columns (count printed = 2,819 ± the register's current blank count); rows with a GSTIN unchanged (compare `POS Check` distribution before/after on those rows); 0 error cells; Statewise RCM vs 3B diff unchanged (`N26`). Save (+xlsb if free).
+
+- [x] **Step 4: Commit** `git add vel/scripts/rcm_pos_na.py && git commit -m "fix(vel-rcm): POS check block reads NA when there is no vendor GSTIN"`
+
+---
+
+### Task 10: rulings from recording 2 (35 min) — to CONFIRM against the translated transcript before executing
+
+Draft, from the first-pass English transcript; each item becomes a step only after the translation (`meet21b_transcript.md`) confirms it:
+
+- (a) **RCM GL, FY 24-25 output**: the CA only needs the Mar-25 output documents claimed in Apr-25 — not the whole FY 24-25 output GL (7,440 rows labelled "Other period (2024-25)"). Restrict the RCM GL to FY 25-26 + open items + Mar-25 output, or label Mar-25 rows "FY 24-25 - Mar-25 claimed Apr-25" and drop the rest. (≈14:30–15:30 of recording 2)
+- (b) **Zero-difference near matches** (`Matched with 2B – similar invoice no + amount (±100) – review` where the document amounts tie to the rupee and the dates match): the CA says no review is needed — give them a non-review remark such as `Matched with 2B – amount & date, invoice no differs`. Implement in `reco_lib` (pass 2: when `abs(tot diff) < 1` and `doc_date == invoice_date` drop the ` – review` suffix and use that wording). (≈21:50–23:30)
+- (c) **Remark numbering + mirrored texts**: "we give numbering to every remark so that filter 1-1 / 2-2 matches on both sides; all remarks the same on both sheets except the two one-sided ones — books-only = 'Not in 2B', 2B-only = 'Not in books'". Prefix every remark with a serial (`1 – Matched with 2B – invoice no` …) on both the register and the 2B sheet, and make the 2B sheet's `Reco Remarks` show the register's remark text for matched documents (lookup by KEY into the register's Reco Remarks) and `Not in books – FY 25-26 claims` for the rest. (≈30:00–31:30)
+- (d) **FY 24-25-2B-matched lines** (`Matched with 2B of FY 24-25 – Table 6A1`): today Countif = "Not consider – matched in FY 24-25 2B" so `2B_` shows nothing and the CA saw "it is in 2B, it is considered, but the difference is not coming". Make these lines `Consider` with `2B_` pulled from `GSTR-2B ITC Data` by supplier GSTIN + invoice (+FY) so `D_` closes. (≈25:30–26:40)
+- (e) **Remarks stay values, not formulas** — confirmed (≈33:20). Already the case.
 
 ---
 
@@ -642,3 +675,11 @@ git add vel/scripts/t6a1_2b_period.py && git commit -m "fix(vel-itc): T6A1 2B Re
 - Spec coverage: item 1 (URD confusion) → Tasks 1, 2, 5; item 2 (ITCR 26-27 2B reco) → Task 6; item 3 (recipient mismatch remarks) → Tasks 1, 2, 5; item 4 (permanent reversals from LY 9C) → Task 4; item 5 (GSTR-2B ITC Data) → Task 3 (+5 for the knock-on). Pawan's "2B path of prev year" folder is the source of Task 3.
 - Names used across tasks: `match_register`, `norm`, `zkey`, `classify_vendor_gstin`, `S`, `num` defined in Task 1 and imported in Tasks 2 and 6; new 26-27 headers listed once in Task 6 `NEW`; `Permanent Reversals` column header on the 2B sheet is the existing BG header.
 - Order of execution matters: 3 → 4 → (1, 2) → 5 → 6 → 7. Tasks 1–2 can be built before 3–4 but the chain (5) must run after 3–4.
+
+
+## Execution status (21-09-2026 19:45)
+
+- Tasks 1–6, 8, 9 executed and verified (chain4 log in the session scratchpad). Task 10: (b) (c) (d) (e) done in code and applied by chain4;
+  (a) RCM GL Mar-25 restriction is coded in `rcm_gl_rebuild.py` but its run aborted — the `\192.168.1.69` share dropped before the FBL3N dumps
+  could be read; nothing was written. Re-run it alone when the share is back. xlsb export pending (file open in Excel).
+- Plan expectation corrected: FY 26-27 `Countif Consider` is 181 (one per SAP document; 2,109 lines belong to 181 documents), not ≈2,000.

@@ -1,4 +1,4 @@
-# VEL GSTR-9/9C FY 2025-26 — handoff (as of 19-09-2026)
+# VEL GSTR-9/9C FY 2025-26 — handoff (as of 21-09-2026)
 
 Start a Claude Code session in this repo and say: "Read vel/HANDOFF.md and the four gst-audit-vel-* skills, then continue."
 The skills (`.claude/skills/gst-audit-vel-{sales,rcm,itc}` + `gst-audit`) hold the full method and the dated changes-logs
@@ -12,16 +12,24 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 - Server data: `\192.168.1.69\gst folder\GST Returns\GST Audit & Annual Return\FY 2025-26\1. Corporate Clients\VEL\`
   (COM cannot open UNC paths — copy locally; Git-Bash `/c/...` paths do not work inside Python `open()`).
 
-## Verified state (last full check 19-09-2026, 0 error cells)
-- ITC Register 2025-26 golden Total GST **1,06,99,69,542.15**; B_ = ITC-category tax 93,75,28,722.19; Net-ITC check 0.00.
-- Matching: exact 32,035 lines; GSTIN+amount 2,229; invoice-similar+amount 1,273; date+amount 205; FY 24-25 2B 932;
-  not found 5,081; RCM/ISD/URD 2,553. Fallbacks are single-candidate, ±100, same recipient, flagged "review".
-- RCM Register 6..3636 (MP Jul-25 + Jan-26 from monthly files); Statewise RCM vs 3B +5.98L = HOIS 5.50L/99k + Gujarat
-  +94,649 / TN +7,500 / Telangana −54,372 taxable-only. RCM GL keyed on Posting Date | Document Number.
-- Tax comp report Reasons: 166 Matched / 38 explained / 0 residual (Computation sheets vs filed 3B).
-- T6A1 Extract: 3,256 rows, 2B Return Period live; ITC Register 2026-27: 2,109 document rows from the client's Inputs sheets.
+## Verified state (last full check 21-09-2026 19:42 after chain4, 0 error cells)
+- ITC Register 2025-26 golden Total GST **1,06,99,69,542.15**; B_ = ITC-category tax 93,75,28,722.19; 2B_ 87,03,42,198.29;
+  D_ 6,71,86,523.90; Net-ITC check 0.00; ITCR vs 3B net 2,52,024.32; ITC Summary 6A1 blocks G/J/M/P/S
+  2,67,48,108.62 / 1,45,33,807.83 / 3,75,19,734.83 / 78,67,313.94 / 26,09,545.00.
+- Matching = `vel/scripts/reco_lib.py` (tests in `tests/vel/`), numbered remarks 1–15 identical on the register and the 2B sheet
+  (2B side is a live lookup, remarks_mirror.py). Register: 1 exact 32,075 | 2 recipient differs 5 | 3 GSTIN corrected 17 |
+  4 amount & date tie 2,714 | 5 similar 311 | 6 GSTIN+amount 457 | 7 date+amount 82 | 8 amount 1 | 9 FY 24-25 2B 1,164 |
+  10 not in 2B 4,948 | 12 RCM 2,527 | 14 URD 7 | 15 invalid GSTIN 2. 2B side: 11 not in books 7,239, matched 6,628.
+- `GSTR-2B ITC Data` = Octa PAN-level FY 24-25 export (10,322 docs + 188 ISD) with LY-9C permanent-reversal flags; T6A1 Extract
+  3,395 rows keyed on GSTIN + invoice + FY (1,354 dated / 2,041 not in 2B).
+- ITC Register 2026-27: 2,109 lines = 181 documents, reconciled in the 25-26 format (B_ 2,42,80,458.10 == ITC tax, 2B_ 2,36,63,716.09).
+- RCM Register 6..3636; POS block NA on 2,819 rows without vendor GSTIN; Statewise RCM vs 3B +5.98L (HOIS 5.50L/99k + Gujarat /
+  TN / Telangana taxable-only). Tax comp Reasons: 166 Matched / 38 explained / 0 residual.
 
 ## Open items
+0. **RCM GL Mar-25 restriction not yet applied** (rcm_gl_rebuild.py is coded; the 21-09 run aborted because `\192.168.1.69`
+   dropped before the dumps were read - nothing written). Run it alone when the share is back, verify 0 errors / Found in Output
+   GL unchanged / Statewise diff unchanged, then export the xlsb (the .xlsb was open in Excel on 21-09 - export still pending).
 1. **ZFI06**: client export (1,717 docs) contains none of the register's 6,018 FY 25-26 documents → Expense GL Element /
    PO Number / Expense Description filled on 144 rows only; `ZFI06 status` column explains it. Needs a fresh ZFI06 run
    (company code 1000, 01.04.2025–31.03.2026, all BPs, no selection). On arrival: reload `ZFI06 Data` sheet (header row 2,
@@ -33,7 +41,8 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 6. Optional: raw-data sheet header font sizes (Calibri 9/10) not forced to 11.
 
 ## How to re-run the ITC chain after a data change
-`b2_remerge_2627.py` → `strip_orphan_pivots.py` → `readd_buttons2.py` → `cascade_fix.py` → `final_countif_rule.py` →
-`t6a1_2b_period.py` → verify (0 errors, golden, Net-ITC 0.00) → export xlsb. Do everything in ONE COM session where possible
-(each open/recalc/save of the master costs ~2 min). Never insert rows at the first data row (row 6) — ranges that start at $6
-shift; insert inside the range and delete the old rows.
+`b2_remerge_2627.py` → `strip_orphan_pivots.py` → `readd_buttons2.py` → then `vel/scripts/chain4.sh` (= `cascade_fix.py` →
+`final_countif_rule.py` → `t6a1_2b_period.py` → `fy2627_reco.py` → `remarks_mirror.py` → `rcm_gl_rebuild.py`, ~11 min, one COM
+session per script, log to chain4.log) → verify (0 errors, golden, Net-ITC 0.00, 6A1 blocks) → export xlsb. Snapshot the master
+first. Never insert rows at the first data row (row 6) — ranges that start at $6 shift; insert inside the range and delete the old
+rows. Never insert columns before existing ones on ITC Register 2026-27 (ITC Summary reads it by letter) — append after the last header.
