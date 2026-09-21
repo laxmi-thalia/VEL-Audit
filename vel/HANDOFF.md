@@ -9,7 +9,7 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 - Sent to the CAs: the `.xlsb` next to it (re-export after every change: COM `SaveAs FileFormat=50`).
 - Only ever write to that path. Before any write: `open(path,'r+b')` — if locked, ask the user to close Excel without saving.
 - Snapshots of every step live in the session scratchpad (`master2_snapshot_before_*.xlsx`); take one before each write.
-- Server data: `\192.168.1.69\gst folder\GST Returns\GST Audit & Annual Return\FY 2025-26\1. Corporate Clients\VEL\`
+- Server data: `\\192.168.1.69\gst folder\GST Returns\GST Audit & Annual Return\FY 2025-26\1. Corporate Clients\VEL\`
   (COM cannot open UNC paths — copy locally; Git-Bash `/c/...` paths do not work inside Python `open()`).
 
 ## Verified state (last full check 21-09-2026 19:42 after chain4, 0 error cells)
@@ -27,7 +27,7 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
   TN / Telangana taxable-only). Tax comp Reasons: 166 Matched / 38 explained / 0 residual.
 
 ## Open items
-0. **RCM GL Mar-25 restriction not yet applied** (rcm_gl_rebuild.py is coded; the 21-09 run aborted because `\192.168.1.69`
+0. **RCM GL Mar-25 restriction not yet applied** (rcm_gl_rebuild.py is coded; the 21-09 run aborted because `\\192.168.1.69`
    dropped before the dumps were read - nothing written). Run it alone when the share is back, verify 0 errors / Found in Output
    GL unchanged / Statewise diff unchanged, then export the xlsb (the .xlsb was open in Excel on 21-09 - export still pending).
 1. **ZFI06**: client export (1,717 docs) contains none of the register's 6,018 FY 25-26 documents → Expense GL Element /

@@ -680,6 +680,6 @@ Draft, from the first-pass English transcript; each item becomes a step only aft
 ## Execution status (21-09-2026 19:45)
 
 - Tasks 1–6, 8, 9 executed and verified (chain4 log in the session scratchpad). Task 10: (b) (c) (d) (e) done in code and applied by chain4;
-  (a) RCM GL Mar-25 restriction is coded in `rcm_gl_rebuild.py` but its run aborted — the `\192.168.1.69` share dropped before the FBL3N dumps
+  (a) RCM GL Mar-25 restriction is coded in `rcm_gl_rebuild.py` but its run aborted — the `\\192.168.1.69` share dropped before the FBL3N dumps
   could be read; nothing was written. Re-run it alone when the share is back. xlsb export pending (file open in Excel).
 - Plan expectation corrected: FY 26-27 `Countif Consider` is 181 (one per SAP document; 2,109 lines belong to 181 documents), not ≈2,000.
