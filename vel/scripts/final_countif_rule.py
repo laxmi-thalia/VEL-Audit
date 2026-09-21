@@ -14,6 +14,9 @@ wb = openpyxl.load_workbook(P, read_only=True)
 ws = wb["ITC Register 2025-26"]; H = {S(ws.cell(5, c).value): c for c in range(1, ws.max_column + 1)}
 rows = [r for r in ws.iter_rows(min_row=6, values_only=True) if r[3]]
 b2 = wb["GSTR-2B Apr25-Aug26"]; B2H = {S(b2.cell(2, c).value): c for c in range(1, b2.max_column + 1)}
+ob = wb["GSTR-2B ITC Data"]; OBH = {S(ob.cell(5, c).value): c for c in range(1, ob.max_column + 1)}
+OBN = 5 + sum(1 for r in ob.iter_rows(min_row=6, values_only=True) if r[0]); OBK = L(next(c for h, c in OBH.items() if str(h).startswith("KEY (supplier GSTIN")))
+assert OBH["Integrated Tax(₹)"] == 17 and OBH["Central Tax(₹)"] == 18 and OBH["State/UT Tax(₹)"] == 19, OBH
 NB = 2 + sum(1 for r in b2.iter_rows(min_row=3, values_only=True) if r[0]); wb.close()
 assert B2H["KEY"] == 49 and B2H["IGST (Net)"] == 22, B2H   # AW / V-X as in the original patch
 g = lambda r, h: r[H[h] - 1]
@@ -33,8 +36,10 @@ try:
     for b, src in (("B_IGST", "IGST"), ("B_CGST", "CGST"), ("B_SGST", "SGST")):
         rg.Range("%s6:%s%d" % (c(b), c(b), n)).Formula = '=IF($%s6="Consider",SUMIFS($%s$6:$%s$%d,$%s$6:$%s$%d,$%s6,$%s$6:$%s$%d,$%s6),"NA")' % (CF, c(src), c(src), n, KEY, KEY, n, KEY, VN, VN, n, VN)
     rg.Range("%s6:%s%d" % (c("B_Total GST"), c("B_Total GST"), n)).Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, c("B_IGST"), c("B_CGST"), c("B_SGST"))
-    for t, col in (("2B_IGST", "V"), ("2B_CGST", "W"), ("2B_SGST", "X")):
-        rg.Range("%s6:%s%d" % (c(t), c(t), n)).Formula = '=IF($%s6="Consider",IF($%s6="",0,SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s6)),"NA")' % (CF, K2, col, col, NB, NB, K2)
+    IY = c("Invoice Year")   # FY 24-25-matched lines (KEY2 "PY:...") take their 2B value from the FY 24-25 base (CA Priyesh 21-09)
+    PYF = '=IF($%s6="Consider",IF($%s6="",0,IF(LEFT($%s6,3)="PY:",SUMIFS(\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,MID($%s6,4,200)&"|"&$%s6),SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s6))),"NA")'
+    for t, col, ocol in (("2B_IGST", "V", "Q"), ("2B_CGST", "W", "R"), ("2B_SGST", "X", "S")):
+        rg.Range("%s6:%s%d" % (c(t), c(t), n)).Formula = PYF % (CF, K2, K2, ocol, ocol, OBN, OBK, OBK, OBN, K2, IY, col, col, NB, NB, K2)
     rg.Range("%s6:%s%d" % (c("2B_Total GST"), c("2B_Total GST"), n)).Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, c("2B_IGST"), c("2B_CGST"), c("2B_SGST"))
     for d, b, t in (("D_IGST", "B_IGST", "2B_IGST"), ("D_CGST", "B_CGST", "2B_CGST"), ("D_SGST", "B_SGST", "2B_SGST"), ("D_Total GST", "B_Total GST", "2B_Total GST")):
         rg.Range("%s6:%s%d" % (c(d), c(d), n)).Formula = '=IF($%s6="Consider",%s6-%s6,"NA")' % (CF, c(b), c(t))
