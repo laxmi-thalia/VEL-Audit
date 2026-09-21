@@ -46,7 +46,7 @@ def inv_similar(a, b):
     return (len(ca) >= 3 and len(cb) >= 3 and (ca in cb or cb in ca)) or inv_gate(a, b)
 def classify_vendor_gstin(g):
     s = S(g).upper()
-    if not s or s in ("MISSING", "NA", "NONE"): return ("missing", "")
+    if not s or len(s) < 5 or s in ("MISSING", "NA", "NONE", "NIL", "URD", "UNREGISTERED", "NOT AVAILABLE"): return ("missing", "")   # '0', '-', 'NA' = no GSTIN
     pan = s[2:12] if len(s) >= 12 else ""
     return ("valid", pan) if GST.match(s) else ("malformed", pan)
 def _tot(r): return round(num(r["igst"]) + num(r["cgst"]) + num(r["sgst"]), 2)
