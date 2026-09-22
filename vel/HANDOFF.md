@@ -1,4 +1,4 @@
-# VEL GSTR-9/9C FY 2025-26 — handoff (as of 21-09-2026)
+# VEL GSTR-9/9C FY 2025-26 — handoff (as of 22-09-2026)
 
 Start a Claude Code session in this repo and say: "Read vel/HANDOFF.md and the four gst-audit-vel-* skills, then continue."
 The skills (`.claude/skills/gst-audit-vel-{sales,rcm,itc}` + `gst-audit`) hold the full method and the dated changes-logs
@@ -23,13 +23,11 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 - `GSTR-2B ITC Data` = Octa PAN-level FY 24-25 export (10,322 docs + 188 ISD) with LY-9C permanent-reversal flags; T6A1 Extract
   3,395 rows keyed on GSTIN + invoice + FY (1,354 dated / 2,041 not in 2B).
 - ITC Register 2026-27: 2,109 lines = 181 documents, reconciled in the 25-26 format (B_ 2,42,80,458.10 == ITC tax, 2B_ 2,36,63,716.09).
-- RCM Register 6..3636; POS block NA on 2,819 rows without vendor GSTIN; Statewise RCM vs 3B +5.98L (HOIS 5.50L/99k + Gujarat /
+- RCM Register 6..3636; RCM GL restricted to FY 25-26 + Mar-25 output + open items (22-09; Found in Output GL 3,630/1);
+  POS block NA on 2,819 rows without vendor GSTIN; Statewise RCM vs 3B +5.98L (HOIS 5.50L/99k + Gujarat /
   TN / Telangana taxable-only). Tax comp Reasons: 166 Matched / 38 explained / 0 residual.
 
 ## Open items
-0. **RCM GL Mar-25 restriction not yet applied** (rcm_gl_rebuild.py is coded; the 21-09 run aborted because `\\192.168.1.69`
-   dropped before the dumps were read - nothing written). Run it alone when the share is back, verify 0 errors / Found in Output
-   GL unchanged / Statewise diff unchanged, then export the xlsb (the .xlsb was open in Excel on 21-09 - export still pending).
 1. **ZFI06**: client export (1,717 docs) contains none of the register's 6,018 FY 25-26 documents → Expense GL Element /
    PO Number / Expense Description filled on 144 rows only; `ZFI06 status` column explains it. Needs a fresh ZFI06 run
    (company code 1000, 01.04.2025–31.03.2026, all BPs, no selection). On arrival: reload `ZFI06 Data` sheet (header row 2,

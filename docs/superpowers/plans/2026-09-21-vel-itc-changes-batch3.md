@@ -683,3 +683,4 @@ Draft, from the first-pass English transcript; each item becomes a step only aft
   (a) RCM GL Mar-25 restriction is coded in `rcm_gl_rebuild.py` but its run aborted — the `\\192.168.1.69` share dropped before the FBL3N dumps
   could be read; nothing was written. Re-run it alone when the share is back. xlsb export pending (file open in Excel).
 - Plan expectation corrected: FY 26-27 `Countif Consider` is 181 (one per SAP document; 2,109 lines belong to 181 documents), not ≈2,000.
+- 22-09: (a) `rcm_gl_rebuild.py` ran once the share was back — 0 error cells, Statewise diff unchanged, FY 24-25 output now 929 Mar-25 rows (909 labelled claimed Apr-25).

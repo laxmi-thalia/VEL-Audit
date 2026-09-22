@@ -239,9 +239,11 @@ sync scripts. If a change alters numbers, it must reproduce the goldens first.
 - **RCM GL (rcm_gl_rebuild.py, ruling (a), recording 2 ≈14:30)**: the CA only needs the Mar-25 OUTPUT documents claimed in Apr-25,
   not the whole FY 24-25 output GL (7,440 rows). Code now keeps only Mar-25 postings from `RCM Output FY 2024-25.xlsx`
   (`_pd.year == 2025 and _pd.month == 3`), Output label `FY 24-25 – Mar-25 RCM claimed Apr-25`, Input label for FY 26-27 postings
-  `FY 26-27 posting – Apr-26 claim of Mar-26 RCM (FY 26-27 scope)`. NOT YET RUN: the 21-09 chain aborted on this step because the
-  `\192.168.1.69` share dropped (files unreadable) - it fails before opening the master, so nothing was written. Re-run alone when
-  the share is back; expected: register `Found in Output GL` unchanged (3,502 / 3,503 pattern), Statewise RCM vs 3B diff unchanged
-  (the GL is a check column, not a source), 0 error cells; then export the xlsb.
+  `FY 26-27 posting – Apr-26 claim of Mar-26 RCM (FY 26-27 scope)`. RUN 22-09 (the 21-09 attempt aborted because the
+  `\192.168.1.69` share dropped before the dumps were read - nothing written): GL 27,558 rows (Output 10,520 = FY 25-26 8,620 +
+  Mar-25 929 + open items 971; Input 17,038). Output side: matched 6,035, debit/payment 2,061, NOT IN RCM REGISTER (FY 25-26) 544,
+  `FY 24-25 – Mar-25 RCM claimed Apr-25` 909, FY 26-27 open 971. Register (3,631 rows): Found in Output GL Yes 3,630 / No 1,
+  Found in Input GL (GL Key) Yes 3,629 / No 2 (HOIS-type amount halves: GL 49,500 vs register 99,000 x4). 0 error cells;
+  Statewise RCM vs 3B diff unchanged at +5,97,776 (the GL is a check column, not a source).
 - RCM lines in the ITC Register 2025-26 carry remark `12 – Not applicable – RCM self-invoice` (2,527 lines) in the numbered
   vocabulary shared with the ITC skill (see gst-audit-vel-itc changes log 21-09 batch 3).

@@ -384,6 +384,5 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   17 lines / 2 vendors - 2900003829 (8 lines, 14-char GSTIN), 2900005509 / 5003 / 5691 / 5698 (14-char); remark 15 (unresolved)
   2 lines - 3500021788 / 3500021787 (MSEDCL, 16 chars). Docx row (Bihar, supplier 09DCEPK6815A2ZS, invoice 3): `Not in 2B (Apr-24 to Aug-26)`.
 - Known stray: `T6A1 Extract - 24-25`!V4 holds the constant text `#VALUE!` (pre-existing, not a formula error; SpecialCells reports 0).
-- **Pending (server down at 19:45 on 21-09)**: rcm_gl_rebuild.py with the Mar-25 restriction (ruling (a)) could not read the FBL3N dumps
-  from `\192.168.1.69` (three `RCM Output *.xlsx` unreadable, then the share dropped). It failed BEFORE opening the master - the master
-  carries the first five chain steps. Re-run `rcm_gl_rebuild.py` alone when the share is back, then export the xlsb.
+- RCM GL Mar-25 restriction (ruling (a)) ran on 22-09 after the `\192.168.1.69` share came back (the 21-09 chain aborted on that
+  step before opening the master): 0 error cells, Statewise RCM vs 3B unchanged +5,97,776 - details in the gst-audit-vel-rcm log 21-09.
