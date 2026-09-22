@@ -405,3 +405,20 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   ('RCM paid in Mar-25 availed in Apr-25', 382 rows, 26,09,545) - a double count inside 6A1. cascade_fix.py now requires category ITC for
   component 1; the next cascade run will drop those 127 lines from component 1 (ITC Summary block G falls by ~12.2L). Not re-run yet.
 - The 2B-side '1 –' count is 5,348 rows + 125 '(ITCR 26-27)'; register 12 now 3,143 (2,527 self-invoice + 616 in 2B), 9 now 1,037.
+
+## Changes log - 2026-09-22: ITC Register 2026-27 rebuilt in the exact ITC Register 2025-26 layout (Pawan: "use the SAME FORMAT entirely")
+
+- fy2627_relayout.py rewrote the sheet IN PLACE: rows 2-3 title/description, row 4 SUBTOTALs (R..V), header row 5, data rows 6..2114;
+  columns A..BV are the 25-26 headers in the 25-26 order (names, header styling, widths, number formats), formulas re-based to this
+  sheet's rows (Tax Rate, Total GST, KEY, B_/2B_/D_ incl. the PY branch and `2B pull`, the four 'as per 2B' lookups, POS block, ZFI06
+  lookups, 2B Year). Values mapped by name (STATE NAME -> State Name, VEL GSTN -> VEL GSTIN, Type -> TYPE, Consider in 8A reco ->
+  Consider 8A reco, Posting Year -> F.Y/Booking Year); '3B Claim Month' text ('01 Apr 2026' / '03 June 2026') became real dates;
+  'Matching of 12B…' = NA; columns with no 26-27 source (Nature of Services, Type for GSTR9, Material Description, Eligibility,
+  Considered in Table 6A1, Remarks for accounting entries) blank. The sheet's own columns follow after BV: Correct GSTIN,
+  GSTR 9_Reporting, Reasons (GSTR 9), Available in 2B, 2B Inv, 2B Period (client lookup), Final Remarks, Query, POS Remarks, Source.
+- External references repointed by header name with rows +1: ITC Summary (114 cells; T/U/V -> S/T/U, X -> BX, Z -> W, D -> D),
+  GSTR-2B Apr25-Aug26 remark lookup (BE/BN -> AF/AO), INDEX hyperlink. Verified: ITC Summary values identical before/after, 0 error
+  cells, 25-26 golden unchanged, 26-27 Total GST = B_ = 2,42,80,458.10, 2B_ 2,36,63,716.09, D_ 6,16,742.01, Countif 181/1,928,
+  remark counts unchanged, 2B sheet remark counts unchanged. xlsb exported.
+- fy2627_reco.py / remarks_mirror.py now read header row 5 / data row 6 (and 'VEL GSTIN'). TRAP: fy2627_rebuild.py + fy2627_cols.py
+  still produce the OLD layout (header row 4) - after any data rebuild run fy2627_relayout.py again, then fy2627_reco.py.

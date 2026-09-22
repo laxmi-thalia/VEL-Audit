@@ -16,11 +16,11 @@ try:
     t0 = time.time(); wb = xl.Workbooks.Open(P); xl.Calculation = -4135
     isum = wb.Worksheets("ITC Summary"); snap = lambda: [round(isum.Cells(25, c).Value or 0, 2) for c in list(range(7, 22)) + [49, 50, 51, 83, 84, 85]]; before = snap()
     r25 = wb.Worksheets("ITC Register 2025-26"); H25 = {r25.Cells(5, c).Value: c for c in range(1, 90) if r25.Cells(5, c).Value}; N25 = r25.Cells(r25.Rows.Count, 4).End(-4162).Row
-    r27 = wb.Worksheets("ITC Register 2026-27"); H27 = {r27.Cells(4, c).Value: c for c in range(1, 120) if r27.Cells(4, c).Value}; N27 = r27.Cells(r27.Rows.Count, 4).End(-4162).Row
+    r27 = wb.Worksheets("ITC Register 2026-27"); H27 = {r27.Cells(5, c).Value: c for c in range(1, 120) if r27.Cells(5, c).Value}; N27 = r27.Cells(r27.Rows.Count, 4).End(-4162).Row
     b2 = wb.Worksheets("GSTR-2B Apr25-Aug26"); BH = {b2.Cells(2, c).Value: c for c in range(1, 80) if b2.Cells(2, c).Value}; NB = b2.Cells(b2.Rows.Count, 1).End(-4162).Row
     k25, m25 = L(H25["KEY2 (matched 2B key)"]), L(H25["Reco Remarks"]); k27, m27 = L(H27["KEY2 (matched 2B key)"]), L(H27["Reco Remarks"])
     f = ('=IFERROR(INDEX(\'ITC Register 2025-26\'!$%s$6:$%s$%d,MATCH($AW3,\'ITC Register 2025-26\'!$%s$6:$%s$%d,0)),'
-         'IFERROR(INDEX(\'ITC Register 2026-27\'!$%s$5:$%s$%d,MATCH($AW3,\'ITC Register 2026-27\'!$%s$5:$%s$%d,0))&" (ITCR 26-27)","11 – Not in books – FY 25-26 claims"))'
+         'IFERROR(INDEX(\'ITC Register 2026-27\'!$%s$6:$%s$%d,MATCH($AW3,\'ITC Register 2026-27\'!$%s$6:$%s$%d,0))&" (ITCR 26-27)","11 – Not in books – FY 25-26 claims"))'
          % (m25, m25, N25, k25, k25, N25, m27, m27, N27, k27, k27, N27))
     b2.Range("%s3:%s%d" % (L(BH["Reco Remarks"]), L(BH["Reco Remarks"]), NB)).Formula = f
     xl.Calculation = -4105; xl.CalculateFullRebuild()

@@ -13,12 +13,12 @@ def xlsb_free():
     except PermissionError: return False
 shutil.copy(P, "master2_snapshot_before_fy2627reco.xlsx")
 wb = openpyxl.load_workbook(P, read_only=True)
-n = wb["ITC Register 2026-27"]; hd = [c.value for c in next(n.iter_rows(min_row=4, max_row=4))]; H = {h: i for i, h in enumerate(hd) if h}
-rows = [r for r in n.iter_rows(min_row=5, values_only=True) if r[3]]; g = lambda r, h: r[H[h]]
+n = wb["ITC Register 2026-27"]; hd = [c.value for c in next(n.iter_rows(min_row=5, max_row=5))]; H = {h: i for i, h in enumerate(hd) if h}
+rows = [r for r in n.iter_rows(min_row=6, values_only=True) if r[3]]; g = lambda r, h: r[H[h]]
 b2 = wb["GSTR-2B Apr25-Aug26"]; BH = {c.value: i for i, c in enumerate(next(b2.iter_rows(min_row=2, max_row=2))) if c.value}
 B2 = [r for r in b2.iter_rows(min_row=3, values_only=True) if r[0]]; NB = 2 + len(B2); wb.close()
 reg = [{"vendor_gstin": g(r, "Vendor GSTIN"), "invoice": g(r, "Invoice No."), "invoice_date": g(r, "Invoice Date"), "invoice_year": g(r, "Invoice Year"), "category": g(r, "Category"),
-        "vel_gstin": g(r, "VEL GSTN"), "igst": g(r, "IGST"), "cgst": g(r, "CGST"), "sgst": g(r, "SGST")} for r in rows]
+        "vel_gstin": g(r, "VEL GSTIN"), "igst": g(r, "IGST"), "cgst": g(r, "CGST"), "sgst": g(r, "SGST")} for r in rows]
 b2r = [{"supplier_gstin": r[BH["Supplier GSTIN"]], "doc_no": r[BH["Doc No"]], "doc_date": r[BH["Doc Date"]], "company_gstin": r[BH["Company GSTIN"]], "key": S(r[BH["Supplier GSTIN"]]).upper() + norm(r[BH["Doc No"]]),
         "igst": r[BH["IGST (Net)"]], "cgst": r[BH["CGST (Net)"]], "sgst": r[BH["SGST (Net)"]]} for r in B2]
 out = match_register(reg, b2r, set(), set())
@@ -32,27 +32,27 @@ NEW = ["KEY", "Countif", "B_IGST", "B_CGST", "B_SGST", "B_Total GST", "KEY2 (mat
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:
     t0 = time.time(); wbx = xl.Workbooks.Open(P); xl.Calculation = -4135; sh = wbx.Worksheets("ITC Register 2026-27")
-    HX = {sh.Cells(4, c).Value: c for c in range(1, 120) if sh.Cells(4, c).Value}; RN = sh.Cells(sh.Rows.Count, 4).End(-4162).Row; assert RN - 4 == len(rows), (RN, len(rows))
+    HX = {sh.Cells(5, c).Value: c for c in range(1, 120) if sh.Cells(5, c).Value}; RN = sh.Cells(sh.Rows.Count, 4).End(-4162).Row; assert RN - 5 == len(rows), (RN, len(rows))
     if all(h in HX for h in NEW): start = HX["KEY"]
     else:
         start = max(HX.values()) + 1
         for i, h in enumerate(NEW):
-            x = sh.Cells(4, start + i); x.Value = h; x.Font.Bold = True; x.Font.Color = 0xFFFFFF; x.Interior.Color = 0x4F3F33 if not h.startswith(("B_", "2B_", "D_")) else 0xB09784
+            x = sh.Cells(5, start + i); x.Value = h; x.Font.Bold = True; x.Font.Color = 0xFFFFFF; x.Interior.Color = 0x4F3F33 if not h.startswith(("B_", "2B_", "D_")) else 0xB09784
     C = {h: L(start + i) for i, h in enumerate(NEW)}; c = lambda h: L(HX[h])
-    rg = lambda h: sh.Range("%s5:%s%d" % (C[h], C[h], RN))
-    rg("KEY").Formula = '=UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($%s5&$%s5," ",""),"-",""),"/",""),".",""),"\'",""),"_",""))' % (c("Vendor GSTIN"), c("Invoice No."))
+    rg = lambda h: sh.Range("%s6:%s%d" % (C[h], C[h], RN))
+    rg("KEY").Formula = '=UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($%s6&$%s6," ",""),"-",""),"/",""),".",""),"\'",""),"_",""))' % (c("Vendor GSTIN"), c("Invoice No."))
     rg("Countif").Value = [[v] for v in labels]; rg("KEY2 (matched 2B key)").Value = [[o["key2"] or None] for o in out]; rg("Reco Remarks").Value = [[o["verdict"]] for o in out]
     KEY, VN, K2, CF = C["KEY"], c("Vendor Name/RCM Category"), C["KEY2 (matched 2B key)"], C["Countif"]
     for b, src in (("B_IGST", "IGST"), ("B_CGST", "CGST"), ("B_SGST", "SGST")):
-        rg(b).Formula = '=IF($%s5="Consider",SUMIFS($%s$5:$%s$%d,$%s$5:$%s$%d,$%s5,$%s$5:$%s$%d,$%s5),"NA")' % (CF, c(src), c(src), RN, KEY, KEY, RN, KEY, VN, VN, RN, VN)
-    rg("B_Total GST").Formula = '=IF($%s5="Consider",%s5+%s5+%s5,"NA")' % (CF, C["B_IGST"], C["B_CGST"], C["B_SGST"])
+        rg(b).Formula = '=IF($%s6="Consider",SUMIFS($%s$6:$%s$%d,$%s$6:$%s$%d,$%s6,$%s$6:$%s$%d,$%s6),"NA")' % (CF, c(src), c(src), RN, KEY, KEY, RN, KEY, VN, VN, RN, VN)
+    rg("B_Total GST").Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, C["B_IGST"], C["B_CGST"], C["B_SGST"])
     for t, col in (("2B_IGST", "V"), ("2B_CGST", "W"), ("2B_SGST", "X")):
-        rg(t).Formula = '=IF($%s5="Consider",IF($%s5="",0,SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s5)),"NA")' % (CF, K2, col, col, NB, NB, K2)
-    rg("2B_Total GST").Formula = '=IF($%s5="Consider",%s5+%s5+%s5,"NA")' % (CF, C["2B_IGST"], C["2B_CGST"], C["2B_SGST"])
+        rg(t).Formula = '=IF($%s6="Consider",IF($%s6="",0,SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s6)),"NA")' % (CF, K2, col, col, NB, NB, K2)
+    rg("2B_Total GST").Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, C["2B_IGST"], C["2B_CGST"], C["2B_SGST"])
     for d, b, t in (("D_IGST", "B_IGST", "2B_IGST"), ("D_CGST", "B_CGST", "2B_CGST"), ("D_SGST", "B_SGST", "2B_SGST"), ("D_Total GST", "B_Total GST", "2B_Total GST")):
-        rg(d).Formula = '=IF($%s5="Consider",%s5-%s5,"NA")' % (CF, C[b], C[t])
+        rg(d).Formula = '=IF($%s6="Consider",%s6-%s6,"NA")' % (CF, C[b], C[t])
     for h in ("B_IGST", "B_CGST", "B_SGST", "B_Total GST", "2B_IGST", "2B_CGST", "2B_SGST", "2B_Total GST", "D_IGST", "D_CGST", "D_SGST", "D_Total GST"): rg(h).NumberFormat = "#,##0.00"
-    sh.Columns(C["Reco Remarks"]).ColumnWidth = 60; sh.Range(sh.Cells(4, 1), sh.Cells(RN, start + len(NEW) - 1)).AutoFilter()
+    sh.Columns(C["Reco Remarks"]).ColumnWidth = 60; pass  # layout/autofilter owned by fy2627_relayout.py (25-26 layout, header row 5)
     xl.Calculation = -4105; xl.CalculateFullRebuild()
     cs = lambda h: sum(v[0] for v in rg(h).Value if isinstance(v[0], (int, float)))
     itc_tax = sum(num(g(r, "IGST")) + num(g(r, "CGST")) + num(g(r, "SGST")) for r in rows if g(r, "Category") == "ITC")

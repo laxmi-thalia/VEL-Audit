@@ -25,6 +25,8 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 - `GSTR-2B ITC Data` = Octa PAN-level FY 24-25 export (10,322 docs + 188 ISD) with LY-9C permanent-reversal flags; T6A1 Extract
   3,395 rows keyed on GSTIN + invoice + FY (1,354 dated / 2,041 not in 2B).
 - ITC Register 2026-27: 2,109 lines = 181 documents, reconciled in the 25-26 format (B_ 2,42,80,458.10 == ITC tax, 2B_ 2,36,63,716.09).
+  Since 22-09 the sheet has the EXACT 25-26 layout (header row 5, data from row 6, columns A..BV identical, own extras after BV);
+  fy2627_rebuild/cols still emit the old layout - run fy2627_relayout.py after them, then fy2627_reco.py.
 - RCM Register 6..3636; RCM GL restricted to FY 25-26 + Mar-25 output + open items (22-09; Found in Output GL 3,630/1);
   POS block NA on 2,819 rows without vendor GSTIN; Statewise RCM vs 3B +5.98L (HOIS 5.50L/99k + Gujarat /
   TN / Telangana taxable-only). Tax comp Reasons: 166 Matched / 38 explained / 0 residual.
