@@ -64,7 +64,12 @@ V = {"exact": "1 – Matched with 2B – invoice no",
      "not_in_2b": "10 – Not in 2B – Apr-25 to Aug-26",
      "not_in_books": "11 – Not in books – FY 25-26 claims",
      "rcm": "12 – Not applicable – RCM self-invoice", "isd": "13 – Not applicable – ISD", "urd": "14 – Not applicable – no vendor GSTIN (URD)",
-     "invalid": "15 – Not matched – vendor GSTIN invalid (%d chars) – review"}
+     "invalid": "15 – Not matched – vendor GSTIN invalid (%d chars) – review",
+     "rcm_in2b": "12 – Not applicable – RCM line (in 2B: %s)"}
+# RCM-category lines are outside the Countif / B_ / 2B_ frame; when their vendor GSTIN + invoice sit in 2B they keep number 12 on both
+# sheets (Pawan 22-09) so a '1 –' filter holds ITC lines only. The basis of the match is kept in brackets.
+RCM_BASIS = {"1": "invoice no", "2": "invoice no", "3": "invoice no", "4": "amount & date", "5": "similar invoice + amount",
+             "6": "GSTIN + amount", "7": "date + amount", "8": "amount", "9": "FY 24-25 2B"}
 def match_register(reg, b2, py_keys, py_dates):
     """reg rows: vendor_gstin, invoice, invoice_date, invoice_year, category, vel_gstin, igst, cgst, sgst.
     b2 rows: supplier_gstin, doc_no, doc_date, company_gstin, key, igst, cgst, sgst.
@@ -136,4 +141,8 @@ def match_register(reg, b2, py_keys, py_dates):
         if (vg + zkey(r["invoice"])) in py_keys or (isinstance(d, dt.datetime) and (vg, d.date(), tot) in py_dates):
             verdict[i] = V["py"]; key2[i] = "PY:" + vg + norm(r["invoice"]); continue
         verdict[i] = V["not_in_2b"]
+    for i, r in enumerate(reg):
+        if S(r["category"]) == "RCM" and key2[i]:
+            b = RCM_BASIS.get(verdict[i].split(" – ")[0])
+            if b: verdict[i] = V["rcm_in2b"] % b
     return [{"verdict": verdict[i], "key2": key2[i]} for i in range(N)]

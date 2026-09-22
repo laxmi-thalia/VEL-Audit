@@ -23,7 +23,7 @@ def test_classify_vendor_gstin():
 
 def test_vocabulary_is_numbered_and_unique():
     nums = [int(v.split(" – ")[0]) for v in R.V.values()]
-    assert nums == list(range(1, 16))
+    assert sorted(set(nums)) == list(range(1, 16)) and nums.count(12) == 2
 
 def test_exact_match_same_recipient():
     v = R.match_register([reg()], [b2()], set(), set())[0]
@@ -63,6 +63,12 @@ def test_invoice_similar_layer_prefers_similar_candidate():
     rows = [reg(invoice="3/GZ/03", igst=990.0, invoice_date=dt.datetime(2025, 5, 2))]
     out = R.match_register(rows, [b2(doc_no="GZ/03"), b2(doc_no="ZZ/77")], set(), set())
     assert out[0]["verdict"] == "5 – Matched with 2B – similar invoice no + amount (±100) – review" and out[0]["key2"].endswith("GZ03")
+
+def test_rcm_line_found_in_2b_keeps_number_12():
+    v = R.match_register([reg(category="RCM")], [b2()], set(), set())[0]
+    assert v["verdict"] == "12 – Not applicable – RCM line (in 2B: invoice no)" and v["key2"] == "27AABCI4971Q1ZWGZ04"
+    p = R.match_register([reg(category="RCM", invoice="PY/1", invoice_date=dt.datetime(2024, 11, 1), invoice_year="2024-25")], [], {"27AABCI4971Q1ZW" + R.zkey("PY/1")}, set())[0]
+    assert p["verdict"] == "12 – Not applicable – RCM line (in 2B: FY 24-25 2B)"
 
 def test_prior_year_2b_layer():
     r = reg(invoice="PY/1", invoice_date=dt.datetime(2024, 11, 1), invoice_year="2024-25")

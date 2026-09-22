@@ -25,7 +25,12 @@ for r in rows:
     if g(r, "Category") != "ITC": labels.append(None); continue
     vg = S(g(r, "Vendor GSTIN")).upper(); k = (vg if re.match(r"^\d{2}[A-Z0-9]{13}$", vg) else "NM:" + S(g(r, "Vendor Name/RCM Category")).upper()) + "|" + norm(g(r, "Invoice No."))
     labels.append("Not consider" if k in seen else "Consider"); seen.add(k)
-print("2B last row:", NB, "| Countif:", dict(collections.Counter(labels)))
+seen2 = set(); pull = []   # Pawan 22-09: one 2B pull per matched key; a second Consider line (duplicate SAP booking) pulls 0 so D_ = B_
+for r, lab in zip(rows, labels):
+    k2 = S(g(r, "KEY2 (matched 2B key)"))
+    if lab == "Consider" and k2: pull.append("No" if k2 in seen2 else "Yes"); seen2.add(k2)
+    else: pull.append(None)
+print("2B last row:", NB, "| Countif:", dict(collections.Counter(labels)), "| 2B pull No:", pull.count("No"))
 m = pickle.load(open("itc_b1_meta.pkl", "rb")); m["consider_labels"] = labels; m["consider"] = ["Consider" if l == "Consider" else "NA" for l in labels]; pickle.dump(m, open("itc_b1_meta.pkl", "wb"))
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:
@@ -33,13 +38,17 @@ try:
     rg = wbx.Worksheets("ITC Register 2025-26"); c = lambda h: L(H[h]); n = 5 + len(rows)
     rg.Range("%s6:%s%d" % (c("Countif"), c("Countif"), n)).Value = [[v] for v in labels]
     KEY, VN, K2, CF = c("KEY"), c("Vendor Name/RCM Category"), c("KEY2 (matched 2B key)"), c("Countif")
+    if "2B pull" not in H:
+        pc = max(H.values()) + 1; hc = rg.Cells(5, pc); src = rg.Cells(5, H["Countif"]); hc.Value = "2B pull"
+        hc.Font.Bold = src.Font.Bold; hc.Font.Color = src.Font.Color; hc.Interior.Color = src.Interior.Color; rg.Columns(pc).ColumnWidth = 9; H["2B pull"] = pc
+    rg.Range("%s6:%s%d" % (c("2B pull"), c("2B pull"), n)).Value = [[v] for v in pull]; PL = c("2B pull")
     for b, src in (("B_IGST", "IGST"), ("B_CGST", "CGST"), ("B_SGST", "SGST")):
         rg.Range("%s6:%s%d" % (c(b), c(b), n)).Formula = '=IF($%s6="Consider",SUMIFS($%s$6:$%s$%d,$%s$6:$%s$%d,$%s6,$%s$6:$%s$%d,$%s6),"NA")' % (CF, c(src), c(src), n, KEY, KEY, n, KEY, VN, VN, n, VN)
     rg.Range("%s6:%s%d" % (c("B_Total GST"), c("B_Total GST"), n)).Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, c("B_IGST"), c("B_CGST"), c("B_SGST"))
     IY = c("Invoice Year")   # FY 24-25-matched lines (KEY2 "PY:...") take their 2B value from the FY 24-25 base (CA Priyesh 21-09)
-    PYF = '=IF($%s6="Consider",IF($%s6="",0,IF(LEFT($%s6,3)="PY:",SUMIFS(\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,MID($%s6,4,200)&"|"&$%s6),SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s6))),"NA")'
+    PYF = '=IF($%s6="Consider",IF($%s6="No",0,IF($%s6="",0,IF(LEFT($%s6,3)="PY:",SUMIFS(\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,\'GSTR-2B ITC Data\'!$%s$6:$%s$%d,MID($%s6,4,200)&"|"&$%s6),SUMIFS(\'GSTR-2B Apr25-Aug26\'!$%s$3:$%s$%d,\'GSTR-2B Apr25-Aug26\'!$AW$3:$AW$%d,$%s6)))),"NA")'
     for t, col, ocol in (("2B_IGST", "V", "Q"), ("2B_CGST", "W", "R"), ("2B_SGST", "X", "S")):
-        rg.Range("%s6:%s%d" % (c(t), c(t), n)).Formula = PYF % (CF, K2, K2, ocol, ocol, OBN, OBK, OBK, OBN, K2, IY, col, col, NB, NB, K2)
+        rg.Range("%s6:%s%d" % (c(t), c(t), n)).Formula = PYF % (CF, PL, K2, K2, ocol, ocol, OBN, OBK, OBK, OBN, K2, IY, col, col, NB, NB, K2)
     rg.Range("%s6:%s%d" % (c("2B_Total GST"), c("2B_Total GST"), n)).Formula = '=IF($%s6="Consider",%s6+%s6+%s6,"NA")' % (CF, c("2B_IGST"), c("2B_CGST"), c("2B_SGST"))
     for d, b, t in (("D_IGST", "B_IGST", "2B_IGST"), ("D_CGST", "B_CGST", "2B_CGST"), ("D_SGST", "B_SGST", "2B_SGST"), ("D_Total GST", "B_Total GST", "2B_Total GST")):
         rg.Range("%s6:%s%d" % (c(d), c(d), n)).Formula = '=IF($%s6="Consider",%s6-%s6,"NA")' % (CF, c(b), c(t))

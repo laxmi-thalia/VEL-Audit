@@ -386,3 +386,22 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
 - Known stray: `T6A1 Extract - 24-25`!V4 holds the constant text `#VALUE!` (pre-existing, not a formula error; SpecialCells reports 0).
 - RCM GL Mar-25 restriction (ruling (a)) ran on 22-09 after the `\192.168.1.69` share came back (the 21-09 chain aborted on that
   step before opening the master): 0 error cells, Statewise RCM vs 3B unchanged +5,97,776 - details in the gst-audit-vel-rcm log 21-09.
+
+## Changes log - 2026-09-22: '1 –' filter ties across the register and the 2B sheet (Pawan; CA Priyesh 21-09 31:13)
+
+- Pawan filtered '1 –' on both sheets and the raw IGST subtotals differed (register 58,77,73,381 vs 2B 59,60,59,006). Raw register tax
+  is per SAP line (several lines and duplicate bookings per invoice) and carries the genuine books-vs-2B differences (D_); the like-for-like
+  tie is the register's 2B_ (Consider lines) against the 2B sheet's IGST/CGST/SGST (Net). Three causes fixed (tie_fix.py, one COM session):
+  1. 125 2B rows were matched via ITC Register 2026-27 - the 2B sheet's remark lookup now suffixes those ' (ITCR 26-27)' (remarks_mirror.py).
+  2. 616 RCM-category register lines (registered GTA vendors) sat in 2B and carried 1/2/7/9 - they are outside the Countif/B_/2B_ frame,
+     so they now read `12 – Not applicable – RCM line (in 2B: <basis>)` on both sheets (reco_lib RCM_BASIS; 489 'invoice no', 127 'FY 24-25 2B').
+  3. Two invoices booked twice in SAP (2900009333 / 6200000040 as '0496' and '496'; 2600000588 / 6200000032) pulled the 2B amount twice:
+     new register column `2B pull` (BV, values: Yes on the first Consider line per KEY2, No on a later one); 2B_ formulas pull 0 on 'No'
+     so D_ = B_ surfaces the duplicate claim (10.4L IGST). final_countif_rule.py stamps the column on every run.
+  Result: register 2B_ on '1 –' Consider = 2B sheet (Net) on '1 –' = IGST 58,16,03,159.31 / CGST 9,66,92,174.47 / SGST 9,66,92,174.47;
+  B_ on the same lines 58,22,17,579.16 / 9,75,45,864.79 / 9,75,45,864.79 (the D_ to explain). 0 error cells, golden and ITC Summary unchanged.
+- **Found, NOT yet applied (needs Pawan/CA):** cascade_fix tagged 127 RCM Mar-25 lines (tax 12,16,544) as Table 6A1 component 1
+  ('ITC dated 24-25 in 2B of 24-25 availed in 25-26') because their remark was 9; the same documents are the RCM component
+  ('RCM paid in Mar-25 availed in Apr-25', 382 rows, 26,09,545) - a double count inside 6A1. cascade_fix.py now requires category ITC for
+  component 1; the next cascade run will drop those 127 lines from component 1 (ITC Summary block G falls by ~12.2L). Not re-run yet.
+- The 2B-side '1 –' count is 5,348 rows + 125 '(ITCR 26-27)'; register 12 now 3,143 (2,527 self-invoice + 616 in 2B), 9 now 1,037.

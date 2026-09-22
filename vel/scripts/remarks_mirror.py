@@ -20,7 +20,7 @@ try:
     b2 = wb.Worksheets("GSTR-2B Apr25-Aug26"); BH = {b2.Cells(2, c).Value: c for c in range(1, 80) if b2.Cells(2, c).Value}; NB = b2.Cells(b2.Rows.Count, 1).End(-4162).Row
     k25, m25 = L(H25["KEY2 (matched 2B key)"]), L(H25["Reco Remarks"]); k27, m27 = L(H27["KEY2 (matched 2B key)"]), L(H27["Reco Remarks"])
     f = ('=IFERROR(INDEX(\'ITC Register 2025-26\'!$%s$6:$%s$%d,MATCH($AW3,\'ITC Register 2025-26\'!$%s$6:$%s$%d,0)),'
-         'IFERROR(INDEX(\'ITC Register 2026-27\'!$%s$5:$%s$%d,MATCH($AW3,\'ITC Register 2026-27\'!$%s$5:$%s$%d,0)),"11 – Not in books – FY 25-26 claims"))'
+         'IFERROR(INDEX(\'ITC Register 2026-27\'!$%s$5:$%s$%d,MATCH($AW3,\'ITC Register 2026-27\'!$%s$5:$%s$%d,0))&" (ITCR 26-27)","11 – Not in books – FY 25-26 claims"))'
          % (m25, m25, N25, k25, k25, N25, m27, m27, N27, k27, k27, N27))
     b2.Range("%s3:%s%d" % (L(BH["Reco Remarks"]), L(BH["Reco Remarks"]), NB)).Formula = f
     xl.Calculation = -4105; xl.CalculateFullRebuild()

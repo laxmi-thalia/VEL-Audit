@@ -67,7 +67,7 @@ for i, r in enumerate(rows):
     elif ("Not applicable" in v): labels.append("Not consider - no vendor GSTIN")
     else: labels.append("Not in 2B (Apr-25 to Aug-26)")
     inv_fy = fy_of_label(g(r, "Invoice Year"), g(r, "Invoice Date"))
-    if ("Matched with 2B of FY 24-25" in v): six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")
+    if ("Matched with 2B of FY 24-25" in v) and cat == "ITC": six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")
     elif ("Not in 2B" in v) and inv_fy == "2024-25" and cat == "ITC": six.append("Yes"); sixrem.append("Correction Entries- ITC dated 24-25 reversed in 25-26")
     else: six.append(None); sixrem.append(None)
 print("verdicts:", dict(collections.Counter(v.split(" - ")[0] for v in verdict)))
