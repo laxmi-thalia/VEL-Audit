@@ -422,3 +422,6 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   remark counts unchanged, 2B sheet remark counts unchanged. xlsb exported.
 - fy2627_reco.py / remarks_mirror.py now read header row 5 / data row 6 (and 'VEL GSTIN'). TRAP: fy2627_rebuild.py + fy2627_cols.py
   still produce the OLD layout (header row 4) - after any data rebuild run fy2627_relayout.py again, then fy2627_reco.py.
+
+- 22-09: rows 6-19 of ITC Register 2025-26 (the Apr-25 RCM docs inserted at row 6) carried the dark header fill - reset to the normal row
+  format (unfill_rows.py copies row 20 formats; values untouched). TRAP: rows inserted at the first data row inherit the header format.
