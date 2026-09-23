@@ -28,6 +28,7 @@ Transcripts in `C:\PROJECTS\accountic\reports\meeting-2026-09-23-*.md`.
 | A8 | **Match key must include state.** It is supplier GSTIN + invoice number today, so one supplier billing the same invoice number in two states cross-matches and invents differences. Fix: state + supplier GSTIN + invoice number. | wherever the 2B match key is built | M1 | todo |
 | A9 | **Drop B2B where B2BA exists.** Both arrive in 2B and the practice is to keep the amendment. Duplicates surfaced in Chhattisgarh. ClearTax's report does not zero the amended rows, so they are being removed by hand today. | GSTR-2B sheets | M1 | todo |
 | A10 | **ISD 2B to be reconciled against GSTR-3B.** Imports are still pending too. | 2B ISD sheets, a new reco | M1, M2 | todo |
+| A11 | **Remove duplicate invoices.** Same supplier, same invoice number, same amount repeated across 2B return periods. Screenshot (Pawan 23-09) shows supplier `23ADFFS9422E1Z*` invoices `VEEPL23-24RA03/05/06/07`, 33,000 taxable / 5,940 IGST, FY 2023-24, repeating across 2B return periods 01-09-24 and 05-09-24, the repeats highlighted. **Open question:** Pawan said VEL **Assam**, but the `State folder` column on every row reads **Chhattisgarh** (and M1 put the amendment duplicates in Chhattisgarh). Confirm which state before touching anything. Check first whether these are B2B/B2BA amendment pairs (see A9) rather than true duplicates — the fix differs. | GSTR-2B sheets | Pawan 23-09 | todo |
 
 ## B. Findings that change numbers, not yet decided
 
@@ -58,3 +59,4 @@ Transcripts in `C:\PROJECTS\accountic\reports\meeting-2026-09-23-*.md`.
 | Date | Item | What happened |
 |---|---|---|
 | 23-09-2026 | — | List created from the two 23-09 recordings. Nothing applied to the master. |
+| 23-09-2026 | A11 | Added from Pawan's screenshot: duplicate invoices to remove. State to be confirmed (Assam vs Chhattisgarh). |
