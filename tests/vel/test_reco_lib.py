@@ -23,7 +23,7 @@ def test_classify_vendor_gstin():
 
 def test_vocabulary_is_numbered_and_unique():
     nums = [int(v.split(" – ")[0]) for v in R.V.values()]
-    assert sorted(set(nums)) == list(range(1, 16)) and nums.count(12) == 2
+    assert sorted(set(nums)) == list(range(1, 16)) and nums.count(12) == 2 and nums.count(3) == 3
 
 def test_exact_match_same_recipient():
     v = R.match_register([reg()], [b2()], set(), set())[0]
@@ -36,7 +36,7 @@ def test_exact_match_recipient_differs():
 
 def test_malformed_gstin_rescued_by_pan_and_invoice():
     v = R.match_register([reg(vendor_gstin="27AABCI4971QZW")], [b2()], set(), set())[0]
-    assert v["verdict"] == "3 – Matched with 2B – invoice no, vendor GSTIN corrected from 2B (27AABCI4971Q1ZW) – review"
+    assert v["verdict"] == "3 – Matched with 2B – invoice no, vendor GSTIN wrong in books (2B: 27AABCI4971Q1ZW) – review"
 
 def test_malformed_gstin_not_rescued():
     v = R.match_register([reg(vendor_gstin="27AABCI4971QZW", invoice="XX/99")], [b2()], set(), set())[0]
@@ -86,3 +86,17 @@ def test_same_invoice_billed_to_two_states_matches_the_right_state():
     out = R.match_register([up, bihar], [b2_bihar, b2_up], set(), set())
     assert out[0]["verdict"] == "1 – Matched with 2B – invoice no"
     assert out[1]["verdict"] == "1 – Matched with 2B – invoice no"
+
+
+def test_gstin_checksum():
+    assert R.gstin_checksum_ok("27AABCI4971Q1ZW") is True     # a real, well-formed GSTIN
+    assert R.gstin_checksum_ok("06AABCF4798C12N") is False    # Priyesh's 2B example: '2' where the 14th char must be 'Z'
+    assert R.gstin_checksum_ok("27AABCI4971QZW") is False     # 14 chars
+
+
+def test_pan_match_names_the_side_whose_gstin_is_wrong():
+    good, bad = "27AABCI4971Q1ZW", "27AABCI4971Q1ZX"           # same PAN, last digit mistyped
+    v = R.match_register([reg(vendor_gstin=good)], [b2(supplier_gstin=bad)], set(), set())[0]
+    assert v["verdict"] == "3 – Matched with 2B – invoice no, vendor GSTIN wrong in 2B (books: 27AABCI4971Q1ZW) – review"
+    v = R.match_register([reg(vendor_gstin=bad)], [b2(supplier_gstin=good)], set(), set())[0]
+    assert v["verdict"] == "3 – Matched with 2B – invoice no, vendor GSTIN wrong in books (2B: 27AABCI4971Q1ZW) – review"

@@ -49,12 +49,26 @@ def classify_vendor_gstin(g):
     if not s or len(s) < 5 or s in ("MISSING", "NA", "NONE", "NIL", "URD", "UNREGISTERED", "NOT AVAILABLE"): return ("missing", "")   # '0', '-', 'NA' = no GSTIN
     pan = s[2:12] if len(s) >= 12 else ""
     return ("valid", pan) if GST.match(s) else ("malformed", pan)
+_G36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+def gstin_checksum_ok(g):
+    """Official GSTIN check digit (mod-36 Luhn variant on the first 14 characters). A GSTIN that is 15 characters but
+    fails this was mistyped somewhere - e.g. a '2' where the 14th character must be 'Z' (Priyesh's example, 23-09)."""
+    s = S(g).upper()
+    if not GST.match(s): return False
+    total = 0
+    for i, ch in enumerate(s[:14]):
+        v = _G36.index(ch) * (1 if i % 2 == 0 else 2)
+        total += v // 36 + v % 36
+    return _G36[(36 - total % 36) % 36] == s[14]
 def _tot(r): return round(num(r["igst"]) + num(r["cgst"]) + num(r["sgst"]), 2)
 # Numbered vocabulary (CA Priyesh 21-09: same numbered remark on the register and the 2B sheet so filter n-n ties on both sides;
 # only 10 'Not in 2B' (books only) and 11 'Not in books' (2B only) differ). Non-exact matches carry '– review' except 4 (amount & date tie).
 V = {"exact": "1 – Matched with 2B – invoice no",
      "exact_rcpt": "2 – Matched with 2B – invoice no – recipient GSTIN differs (2B under %s) – review",
-     "pan_fix": "3 – Matched with 2B – invoice no, vendor GSTIN corrected from 2B (%s) – review",
+     # 3: matched by PAN + invoice while the 15-char GSTINs disagree. The check digit says which side is wrong (A1, 23-09).
+     "pan_books_wrong": "3 – Matched with 2B – invoice no, vendor GSTIN wrong in books (2B: %s) – review",
+     "pan_2b_wrong": "3 – Matched with 2B – invoice no, vendor GSTIN wrong in 2B (books: %s) – review",
+     "pan_differs": "3 – Matched with 2B – invoice no, vendor GSTIN differs (books %s, 2B %s) – review",
      "amt_date": "4 – Matched with 2B – amount & date tie, invoice no differs",
      "similar": "5 – Matched with 2B – similar invoice no + amount (±100) – review",
      "gstin_amt": "6 – Matched with 2B – GSTIN + amount (±100), invoice no differs – review",
@@ -103,11 +117,17 @@ def match_register(reg, b2, py_keys, py_dates):
             verdict[i] = V["rcm"] if cat == "RCM" else (V["isd"] if cat == "ISD" else V["urd"]); continue
         if kind == "malformed":
             c = by_pan.get((pan, zkey(r["invoice"]))) if pan else None
-            if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = V["pan_fix"] % S(b2[j]["supplier_gstin"]).upper()
+            if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = V["pan_books_wrong"] % S(b2[j]["supplier_gstin"]).upper()
             else: verdict[i] = V["invalid"] % len(vg)
             continue
         c = by_z.get(vg + zkey(r["invoice"]))
-        if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); o = other_rcpt(i, j); verdict[i] = (V["exact_rcpt"] % o) if o else V["exact"]
+        if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); o = other_rcpt(i, j); verdict[i] = (V["exact_rcpt"] % o) if o else V["exact"]; continue
+        # A1 (23-09): the invoice is there under the same PAN but the 15-char GSTINs disagree - say which side is wrong
+        c = by_pan.get((pan, zkey(r["invoice"]))) if pan else None
+        if c:
+            j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); sg = S(b2[j]["supplier_gstin"]).upper()
+            ok_b, ok_2 = gstin_checksum_ok(vg), gstin_checksum_ok(sg)
+            verdict[i] = (V["pan_2b_wrong"] % vg) if (ok_b and not ok_2) else (V["pan_books_wrong"] % sg) if (ok_2 and not ok_b) else (V["pan_differs"] % (vg, sg))
     # ---- pass 2: document-level (same recipient, +/-100, single candidate)
     fb_used = set(); b2doc = {}
     for j, r in enumerate(b2):
