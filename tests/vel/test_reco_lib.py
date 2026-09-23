@@ -74,3 +74,15 @@ def test_prior_year_2b_layer():
     r = reg(invoice="PY/1", invoice_date=dt.datetime(2024, 11, 1), invoice_year="2024-25")
     v = R.match_register([r], [], {"27AABCI4971Q1ZW" + R.zkey("PY/1")}, set())[0]
     assert v["verdict"] == "9 – Matched with 2B of FY 24-25 – Table 6A1" and v["key2"].startswith("PY:")
+
+
+def test_same_invoice_billed_to_two_states_matches_the_right_state():
+    """A8 (M1 23-09): one supplier, one invoice number, two of the client's GSTINs — each register line must find
+    the 2B row reported under ITS OWN recipient, not the first row with that key."""
+    up = reg(vel_gstin="09AAECR0503Q1Z6")
+    bihar = reg(vel_gstin="10AAECR0503Q1ZN")
+    b2_bihar = b2(company_gstin="10AAECR0503Q1ZN")
+    b2_up = b2(company_gstin="09AAECR0503Q1Z6")
+    out = R.match_register([up, bihar], [b2_bihar, b2_up], set(), set())
+    assert out[0]["verdict"] == "1 – Matched with 2B – invoice no"
+    assert out[1]["verdict"] == "1 – Matched with 2B – invoice no"

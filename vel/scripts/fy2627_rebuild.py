@@ -3,7 +3,7 @@ rows dated FY 25-26 whose 'GSTR 2B PERIOD' falls in FY 26-27 = FY 25-26 invoices
 detail) - with the real SAP Document Type / Number / Posting Date / vendor GSTIN / Profit Center / Project Code.
 Single COM session: read layout, replace rows (insert inside the range so dependents follow, then delete the old rows), recalc,
 verify, save, export xlsb. Aborts before writing if the layout differs from the expected header row 4."""
-import pickle, re, os, time, shutil, collections, datetime as dt, win32com.client as win32, pythoncom
+import datetime as dt, pickle, re, os, time, shutil, collections, datetime as dt, win32com.client as win32, pythoncom
 P = r"C:\Users\pawar\Downloads\VEL_GST_Audit_FY2025-26_MASTER (2).xlsx"; B = P[:-5] + ".xlsb"
 for p in (P, B):
     try: open(p, "r+b").close()
@@ -40,6 +40,8 @@ sel = []; seen = set(); src_month = collections.Counter()
 for r in rows:
     iy = S(get(r, "Invoice Year", "Invoice year", "FY", "Document Year")).replace("2025-26", "25-26")
     if iy != "25-26": continue
+    _d = get(r, "Document Date")   # A14 (Pawan 23-09): the invoice must be DATED in FY 25-26 - the client's Invoice Year label is unreliable
+    if isinstance(_d, dt.datetime) and not (dt.datetime(2025, 4, 1) <= _d < dt.datetime(2026, 4, 1)): continue
     p = period(get(r, "GSTR 2B PERIOD", "GSTR2B Month"))
     if not p or p < (2026, 4): continue
     dn = S(get(r, "Document Number")).split(".")[0]; key = (dn, S(get(r, "G/L Account", "G-L Account")), S(get(r, "Vendor GSTIN", "GSTN")).upper(), S(get(r, "Reference", "Invoice no")), round(num(get(r, "IGST")), 2), round(num(get(r, "CGST")), 2), round(num(get(r, "SGST")), 2))

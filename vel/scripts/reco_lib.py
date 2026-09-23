@@ -84,6 +84,15 @@ def match_register(reg, b2, py_keys, py_dates):
         if isinstance(r["doc_date"], dt.datetime): by_dt[(vg, r["doc_date"].date(), _tot(r))].append(j)
         by_amt[(vg, _tot(r))].append(j)
     exact_owned = set()
+    def pick_rcpt(i, cands):
+        """A8 (M1 23-09): the same supplier can bill the same invoice number to two of the client's states. Among the 2B
+        rows with that key, take the one reported under THIS line's recipient GSTIN; only when none is, fall back to the
+        first candidate and let other_rcpt() flag it (remark 2)."""
+        vel = S(reg[i]["vel_gstin"]).upper()
+        for j in cands:
+            if j not in exact_owned and vel and S(b2[j]["company_gstin"]).upper() == vel: return j
+        free = [j for j in cands if j not in exact_owned]
+        return free[0] if free else cands[0]
     def other_rcpt(i, j):
         cg = S(b2[j]["company_gstin"]).upper(); vel = S(reg[i]["vel_gstin"]).upper()
         return cg if cg and vel and cg != vel else ""
@@ -94,11 +103,11 @@ def match_register(reg, b2, py_keys, py_dates):
             verdict[i] = V["rcm"] if cat == "RCM" else (V["isd"] if cat == "ISD" else V["urd"]); continue
         if kind == "malformed":
             c = by_pan.get((pan, zkey(r["invoice"]))) if pan else None
-            if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = V["pan_fix"] % S(b2[j]["supplier_gstin"]).upper()
+            if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); verdict[i] = V["pan_fix"] % S(b2[j]["supplier_gstin"]).upper()
             else: verdict[i] = V["invalid"] % len(vg)
             continue
         c = by_z.get(vg + zkey(r["invoice"]))
-        if c: j = c[0]; key2[i] = b2key[j]; exact_owned.add(j); o = other_rcpt(i, j); verdict[i] = (V["exact_rcpt"] % o) if o else V["exact"]
+        if c: j = pick_rcpt(i, c); key2[i] = b2key[j]; exact_owned.add(j); o = other_rcpt(i, j); verdict[i] = (V["exact_rcpt"] % o) if o else V["exact"]
     # ---- pass 2: document-level (same recipient, +/-100, single candidate)
     fb_used = set(); b2doc = {}
     for j, r in enumerate(b2):
