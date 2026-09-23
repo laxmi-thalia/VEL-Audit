@@ -47,12 +47,20 @@ wb.close(); print("loaded %.0fs | register %d | 2B %d" % (time.time() - t0, N, l
 # ---------------- matching (reco_lib: exact + malformed-GSTIN PAN rescue + recipient check + document-level layers + prior-year 2B)
 import sys; sys.path.insert(0, r"C:\PROJECTS\gst-audit-engine")
 from vel.scripts.reco_lib import match_register
-reg_rows = [{"vendor_gstin": g(r, "Vendor GSTIN"), "invoice": g(r, "Invoice No."), "invoice_date": g(r, "Invoice Date"), "invoice_year": g(r, "Invoice Year"),
+# B3 (M1 23-09): an invoice number Excel turned into a date ("06/24-25" -> June 2025) has lost its text; the best we can do is
+# match it as month/year ("6/25" -> zkey 625, which also meets "06/25") and FLAG the line so the reviewer checks it.
+import datetime as _dt
+def inv_text(v): return ("%d/%s" % (v.month, str(v.year)[2:])) if isinstance(v, _dt.datetime) else v
+inv_is_date = [isinstance(g(r, "Invoice No."), _dt.datetime) for r in rows]
+reg_rows = [{"vendor_gstin": g(r, "Vendor GSTIN"), "invoice": inv_text(g(r, "Invoice No.")), "invoice_date": g(r, "Invoice Date"), "invoice_year": g(r, "Invoice Year"),
              "category": g(r, "Category"), "vel_gstin": g(r, "VEL GSTIN"), "igst": g(r, "IGST"), "cgst": g(r, "CGST"), "sgst": g(r, "SGST")} for r in rows]
 b2_rows = [{"supplier_gstin": bg(r, "Supplier GSTIN"), "doc_no": bg(r, "Doc No"), "doc_date": bg(r, "Doc Date"), "company_gstin": bg(r, "Company GSTIN"),
             "key": S(bg(r, "Supplier GSTIN")).upper() + norm(bg(r, "Doc No")), "igst": bg(r, "IGST (Net)"), "cgst": bg(r, "CGST (Net)"), "sgst": bg(r, "SGST (Net)")} for r in B]
 out = match_register(reg_rows, b2_rows, set(o_z), set(o_dt))
 verdict = [o["verdict"] for o in out]; key2 = [o["key2"] for o in out]
+DATE_FLAG = " – invoice no. is a DATE in the books, verify"
+verdict = [v + DATE_FLAG if (isd and v.startswith("10 –")) else v for v, isd in zip(verdict, inv_is_date)]
+print("invoice numbers stored as dates:", sum(inv_is_date), "| of which unmatched and flagged:", sum(1 for v in verdict if v.endswith(DATE_FLAG)))
 b2key = [r["key"] for r in b2_rows]
 
 def consolidate(rows_, verdict_, key2_, cat_of, gstin_of, name_of, inv_of):
