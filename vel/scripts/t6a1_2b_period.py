@@ -43,6 +43,7 @@ try:
     rcm_rows = [r for r, s in zip(range(5, EN + 1), src) if "RCM" in str(s).upper()]
     for r in rcm_rows: e.Cells(r, 3).Value = "RCM self-invoice - not in 2B"
     e.Range("C5:C%d" % EN).NumberFormat = "mmm-yy"
+    e.Range("L5:L%d" % EN).NumberFormat = "dd-mm-yyyy"   # Invoice Date was mm-dd-yy: 6 Mar 2025 displayed as 03-06-25 (Pawan 23-09)
     # totals row 3 (above the header, like the other sheets): SUBTOTAL so filters drive the figures - Pawan 18-09
     assert [hdr[14], hdr[15], hdr[16], hdr[17]] == ["Taxable Value", "IGST", "CGST", "SGST"], hdr[14:18]
     for col in ("O", "P", "Q", "R"):

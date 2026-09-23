@@ -1,4 +1,4 @@
-# VEL GSTR-9/9C FY 2025-26 — handoff (as of 22-09-2026)
+# VEL GSTR-9/9C FY 2025-26 — handoff (as of 23-09-2026)
 
 Start a Claude Code session in this repo and say: "Read vel/HANDOFF.md and the four gst-audit-vel-* skills, then continue."
 The skills (`.claude/skills/gst-audit-vel-{sales,rcm,itc}` + `gst-audit`) hold the full method and the dated changes-logs
@@ -16,7 +16,8 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 - ITC Register 2025-26 golden Total GST **1,06,99,69,542.15**; B_ = ITC-category tax 93,75,28,722.19; 2B_ 87,03,42,198.29;
   D_ 6,71,86,523.90; Net-ITC check 0.00; ITCR vs 3B net 2,52,024.32; ITC Summary 6A1 blocks G/J/M/P/S
   2,67,48,108.62 / 1,45,33,807.83 / 3,75,19,734.83 / 78,67,313.94 / 26,09,545.00.
-- Matching = `vel/scripts/reco_lib.py` (tests in `tests/vel/`), numbered remarks 1–15 identical on the register and the 2B sheet
+- Matching = `vel/scripts/reco_lib.py` (tests in `tests/vel/`), numbered remarks 1–15 identical on the register and the 2B sheet;
+  remarks/KEY2 sit on the Consider line only (Not-consider lines blank, 23-09); all date columns display dd-mm-yy
   (2B side is a live lookup, remarks_mirror.py). Register: 1 exact 32,075 | 2 recipient differs 5 | 3 GSTIN corrected 17 |
   4 amount & date tie 2,714 | 5 similar 311 | 6 GSTIN+amount 457 | 7 date+amount 82 | 8 amount 1 | 9 FY 24-25 2B 1,164 |
   10 not in 2B 4,948 | 12 RCM 3,143 (2,527 self-invoice + 616 in 2B) | 14 URD 7 | 15 invalid GSTIN 2 (22-09 tie fix: 9 is 1,037).
@@ -32,8 +33,8 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
   TN / Telangana taxable-only). Tax comp Reasons: 166 Matched / 38 explained / 0 residual.
 
 ## Open items
-0. **Table 6A1 double count** (found 22-09): 127 RCM Mar-25 lines (12,16,544) sit in component 1 AND the RCM component. cascade_fix.py
-   fixed (category ITC only) but NOT re-run - needs Pawan/CA go; block G of the ITC Summary will fall by ~12.2L.
+0. **Table 6A1 double count** (found 22-09): 127 RCM Mar-25 lines (12,16,544) sit in component 1 AND the RCM component. Fix coded
+   behind `SIX_ITC_ONLY=1` (cascade_fix.py); Pawan 23-09: not now. Block G stays 2,67,48,108.62 until the CA says go (then ~-12.2L).
 1. **ZFI06**: client export (1,717 docs) contains none of the register's 6,018 FY 25-26 documents → Expense GL Element /
    PO Number / Expense Description filled on 144 rows only; `ZFI06 status` column explains it. Needs a fresh ZFI06 run
    (company code 1000, 01.04.2025–31.03.2026, all BPs, no selection). On arrival: reload `ZFI06 Data` sheet (header row 2,

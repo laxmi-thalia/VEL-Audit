@@ -425,3 +425,22 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
 
 - 22-09: rows 6-19 of ITC Register 2025-26 (the Apr-25 RCM docs inserted at row 6) carried the dark header fill - reset to the normal row
   format (unfill_rows.py copies row 20 formats; values untouched). TRAP: rows inserted at the first data row inherit the header format.
+
+## Changes log - 2026-09-22/23: remarks on the Consider line only; dd-mm-yy everywhere (Pawan)
+
+- **Reco Remarks / KEY2 only on the Consider line of each ITC document** (Pawan 22-09: "you shouldn't put remarks for not-considered
+  items, SUMIFS already brings them under Consider"). cascade_fix.py / fy2627_reco.py `consolidate()`: Countif grouping (vendor GSTIN
+  or NM:name + normalised invoice), the Consider line takes the BEST match found on any line of the document (lowest remark number,
+  prior-year keys count), every other line -> blank remark + blank KEY2. RCM/ISD lines untouched (each is its own document). The
+  per-line verdicts still drive the Table 6A1 tagging and the extract internally. 25-26: 6,830 documents, 34,061 lines blanked,
+  2 KG/RE pairs (2600000434/2900006365, 2600000635/2900009426: credit memo first in row order = Consider line, the RE line had
+  matched by date+amount) now read `7 –` on the Consider line with KEY2, 2B_ pulled, D_ -422 / -512 instead of the whole B_.
+  26-27: 181 documents, 1,928 lines blanked. 2B mirror counts unchanged (it found the Consider line already).
+- **Table 6A1 double count NOT applied** (Pawan 23-09: "don't fix T6A1 right now"): cascade_fix.py keeps the RCM Mar-25 lines in
+  component 1 (they now read `12 – … (in 2B: FY 24-25 2B)` so the test is `"Matched with 2B of FY 24-25" in v or "(in 2B: FY 24-25 2B)" in v`);
+  the ITC-only rule sits behind env `SIX_ITC_ONLY=1`. Block G stays 2,67,48,108.62. TRAP (cost a restore): a vocabulary change can
+  silently move Table 6A1 - always compare the 6A1 blocks printed by cascade_fix with the previous run.
+- **All full-date columns display dd-mm-yy** (dates_ddmmyy.py, 63 columns on 20 sheets; month-only 'Apr-25' columns untouched).
+  Trigger: T6A1 Extract 'Invoice Date' was mm-dd-yy, so 6 Mar 2025 read as 03-06-25. Values/formulas unchanged.
+- Runner after a cascade when the master gets locked mid-chain: chain5b.sh = t6a1_2b_period -> fy2627_reco -> remarks_mirror ->
+  dates_ddmmyy. TRAP: TaskStop/kill of the chain runner does not stop the running python/COM step - wait for it, then restore.

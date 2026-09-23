@@ -27,6 +27,29 @@ for r in rows:
     if g(r, "Category") != "ITC": labels.append(None); continue
     vg = S(g(r, "Vendor GSTIN")).upper(); k = (vg if GST.match(vg) else "NM:" + S(g(r, "Vendor Name/RCM Category")).upper()) + "|" + norm(g(r, "Invoice No."))
     labels.append("Not consider" if k in seen else "Consider"); seen.add(k)
+
+def consolidate(rows_, verdict_, key2_, cat_of, gstin_of, name_of, inv_of):
+    """Sheet remarks per document (Countif grouping = vendor GSTIN or NM:name + normalised invoice, ITC lines only):
+    first line of the group = Consider line -> best match of the group (lowest remark number, prior-year keys count);
+    every other line of the group -> blank remark and blank KEY2. RCM/ISD lines untouched (each is its own document)."""
+    import re as _re
+    _G = _re.compile(r"^\d{2}[A-Z0-9]{13}$"); first = {}; members = {}
+    for i, r in enumerate(rows_):
+        if cat_of(r) != "ITC": continue
+        vg = S(gstin_of(r)).upper(); k = (vg if _G.match(vg) else "NM:" + S(name_of(r)).upper()) + "|" + norm(inv_of(r))
+        first.setdefault(k, i); members.setdefault(k, []).append(i)
+    sv, sk = list(verdict_), list(key2_); moved = 0
+    for k, idx in members.items():
+        c = first[k]; matched = [i for i in idx if key2_[i]]
+        if matched:
+            best = min(matched, key=lambda i: (int(verdict_[i].split(" – ")[0]) if verdict_[i].split(" – ")[0].isdigit() else 99, i))
+            if best != c and key2_[best] != key2_[c]: moved += 1
+            sv[c], sk[c] = verdict_[best], key2_[best]
+        for i in idx:
+            if i != c: sv[i], sk[i] = "", ""
+    print("remarks consolidated: %d ITC documents, %d Consider lines took a match found on another line, %d Not-consider lines blanked" % (len(members), moved, sum(len(v) - 1 for v in members.values())))
+    return sv, sk
+sheet_verdict, sheet_key2 = consolidate(rows, [o["verdict"] for o in out], [o["key2"] for o in out], lambda r: g(r, "Category"), lambda r: g(r, "Vendor GSTIN"), lambda r: g(r, "Vendor Name/RCM Category"), lambda r: g(r, "Invoice No."))
 print("rows %d | verdicts %s | Countif %s" % (len(rows), dict(collections.Counter(o["verdict"].split(" – ")[0] + " – " + o["verdict"].split(" – ")[1] for o in out)), dict(collections.Counter(labels))))
 NEW = ["KEY", "Countif", "B_IGST", "B_CGST", "B_SGST", "B_Total GST", "KEY2 (matched 2B key)", "2B_IGST", "2B_CGST", "2B_SGST", "2B_Total GST", "D_IGST", "D_CGST", "D_SGST", "D_Total GST", "Reco Remarks"]
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
@@ -41,7 +64,7 @@ try:
     C = {h: L(start + i) for i, h in enumerate(NEW)}; c = lambda h: L(HX[h])
     rg = lambda h: sh.Range("%s6:%s%d" % (C[h], C[h], RN))
     rg("KEY").Formula = '=UPPER(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($%s6&$%s6," ",""),"-",""),"/",""),".",""),"\'",""),"_",""))' % (c("Vendor GSTIN"), c("Invoice No."))
-    rg("Countif").Value = [[v] for v in labels]; rg("KEY2 (matched 2B key)").Value = [[o["key2"] or None] for o in out]; rg("Reco Remarks").Value = [[o["verdict"]] for o in out]
+    rg("Countif").Value = [[v] for v in labels]; rg("KEY2 (matched 2B key)").Value = [[v or None] for v in sheet_key2]; rg("Reco Remarks").Value = [[v or None] for v in sheet_verdict]
     KEY, VN, K2, CF = C["KEY"], c("Vendor Name/RCM Category"), C["KEY2 (matched 2B key)"], C["Countif"]
     for b, src in (("B_IGST", "IGST"), ("B_CGST", "CGST"), ("B_SGST", "SGST")):
         rg(b).Formula = '=IF($%s6="Consider",SUMIFS($%s$6:$%s$%d,$%s$6:$%s$%d,$%s6,$%s$6:$%s$%d,$%s6),"NA")' % (CF, c(src), c(src), RN, KEY, KEY, RN, KEY, VN, VN, RN, VN)

@@ -54,8 +54,32 @@ b2_rows = [{"supplier_gstin": bg(r, "Supplier GSTIN"), "doc_no": bg(r, "Doc No")
 out = match_register(reg_rows, b2_rows, set(o_z), set(o_dt))
 verdict = [o["verdict"] for o in out]; key2 = [o["key2"] for o in out]
 b2key = [r["key"] for r in b2_rows]
+
+def consolidate(rows_, verdict_, key2_, cat_of, gstin_of, name_of, inv_of):
+    """Sheet remarks per document (Countif grouping = vendor GSTIN or NM:name + normalised invoice, ITC lines only):
+    first line of the group = Consider line -> best match of the group (lowest remark number, prior-year keys count);
+    every other line of the group -> blank remark and blank KEY2. RCM/ISD lines untouched (each is its own document)."""
+    import re as _re
+    _G = _re.compile(r"^\d{2}[A-Z0-9]{13}$"); first = {}; members = {}
+    for i, r in enumerate(rows_):
+        if cat_of(r) != "ITC": continue
+        vg = S(gstin_of(r)).upper(); k = (vg if _G.match(vg) else "NM:" + S(name_of(r)).upper()) + "|" + norm(inv_of(r))
+        first.setdefault(k, i); members.setdefault(k, []).append(i)
+    sv, sk = list(verdict_), list(key2_); moved = 0
+    for k, idx in members.items():
+        c = first[k]; matched = [i for i in idx if key2_[i]]
+        if matched:
+            best = min(matched, key=lambda i: (int(verdict_[i].split(" – ")[0]) if verdict_[i].split(" – ")[0].isdigit() else 99, i))
+            if best != c and key2_[best] != key2_[c]: moved += 1
+            sv[c], sk[c] = verdict_[best], key2_[best]
+        for i in idx:
+            if i != c: sv[i], sk[i] = "", ""
+    print("remarks consolidated: %d ITC documents, %d Consider lines took a match found on another line, %d Not-consider lines blanked" % (len(members), moved, sum(len(v) - 1 for v in members.values())))
+    return sv, sk
+sheet_verdict, sheet_key2 = consolidate(rows, verdict, key2, lambda r: g(r, "Category"), lambda r: g(r, "Vendor GSTIN"), lambda r: g(r, "Vendor Name/RCM Category"), lambda r: g(r, "Invoice No."))
 print("verdicts:", dict(collections.Counter(v.split(" – ")[0] for v in verdict)))
 # ---------------- Consider + labels
+import os as _os; SIX_ITC_ONLY = _os.environ.get("SIX_ITC_ONLY") == "1"   # Table 6A1 component 1 = ITC lines only (found 22-09; run with SIX_ITC_ONLY=1 once Pawan/CA say go)
 seen = set(); labels = []; six = []; sixrem = []
 for i, r in enumerate(rows):
     cat = g(r, "Category"); k2 = key2[i]; v = verdict[i]
@@ -67,7 +91,7 @@ for i, r in enumerate(rows):
     elif ("Not applicable" in v): labels.append("Not consider - no vendor GSTIN")
     else: labels.append("Not in 2B (Apr-25 to Aug-26)")
     inv_fy = fy_of_label(g(r, "Invoice Year"), g(r, "Invoice Date"))
-    if ("Matched with 2B of FY 24-25" in v) and cat == "ITC": six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")
+    if ("Matched with 2B of FY 24-25" in v or "(in 2B: FY 24-25 2B)" in v) and (cat == "ITC" or not SIX_ITC_ONLY): six.append("Yes"); sixrem.append("ITC dated 24-25 in 2B of 24-25 availed in 25-26")   # RCM lines re-labelled 12 still count until SIX_ITC_ONLY=1
     elif ("Not in 2B" in v) and inv_fy == "2024-25" and cat == "ITC": six.append("Yes"); sixrem.append("Correction Entries- ITC dated 24-25 reversed in 25-26")
     else: six.append(None); sixrem.append(None)
 print("verdicts:", dict(collections.Counter(v.split(" - ")[0] for v in verdict)))
@@ -102,9 +126,9 @@ try:
     wbx = xl.Workbooks.Open(P); xl.Calculation = -4135
     rg = wbx.Worksheets("ITC Register 2025-26")
     col = lambda h: RH[h]
-    rg.Range(rg.Cells(6, col("KEY2 (matched 2B key)")), rg.Cells(5 + N, col("KEY2 (matched 2B key)"))).Value = [[v] for v in key2]
+    rg.Range(rg.Cells(6, col("KEY2 (matched 2B key)")), rg.Cells(5 + N, col("KEY2 (matched 2B key)"))).Value = [[v or None] for v in sheet_key2]
     rg.Range(rg.Cells(6, col("Countif")), rg.Cells(5 + N, col("Countif"))).Value = [[v] for v in labels]
-    rg.Range(rg.Cells(6, col("Reco Remarks")), rg.Cells(5 + N, col("Reco Remarks"))).Value = [[v] for v in verdict]
+    rg.Range(rg.Cells(6, col("Reco Remarks")), rg.Cells(5 + N, col("Reco Remarks"))).Value = [[v or None] for v in sheet_verdict]
     rg.Range(rg.Cells(6, col("Considered in Table 6A1")), rg.Cells(5 + N, col("Considered in Table 6A1"))).Value = [[v] for v in six]
     rg.Range(rg.Cells(6, col("Remarks for accounting entries- For 6A1")), rg.Cells(5 + N, col("Remarks for accounting entries- For 6A1"))).Value = [[v] for v in sixrem]
     print("register stamped")
