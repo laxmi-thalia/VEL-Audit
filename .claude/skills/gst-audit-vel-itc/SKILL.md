@@ -449,3 +449,10 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   cells - Invoice No. (register K, 2B base I, extract M), RCM Reference/Inv. No. and three ITC Summary amount columns got a date format;
   numeric invoice numbers then read as #VALUE! in openpyxl and showed as dates/#### in Excel. Restored from the snapshot
   (dates_revert_nondate.py); dates_ddmmyy.py now lists pure date columns only. Values/formulas were never affected (0 error cells).
+
+- 23-09 TRAP (cost a restore): copying cell FORMATS from another open workbook with `Range.Copy` + `PasteSpecial(xlPasteFormats)`
+  across two workbooks (dates_revert_nondate.py) produced an xlsx that openpyxl reads and whose zip is intact but that Excel
+  refuses to open ("Open method of Workbooks class failed" - the repair prompt, swallowed by DisplayAlerts=False). The xlsb
+  and the snapshot taken before that save open fine. Fix: restore the snapshot and re-apply formats as plain `NumberFormat`
+  string writes (dates_revert_nondate2.py). Never paste formats across workbooks; always re-open the saved file in a FRESH
+  instance as the last step of any write. The broken file is kept as master2_UNOPENABLE_23-09_11-24.xlsx in the scratchpad.
