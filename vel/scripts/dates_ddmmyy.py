@@ -10,10 +10,10 @@ def xlsb_free():
     except PermissionError: return False
 shutil.copy(P, "master2_snapshot_before_dates.xlsx")
 COLS = {"SR_2025-26": "E Q", "Step 1 Flags": "I", "GSTR-1 Data": "F AF", "GL Data": "E S R", "S7 CN Time-bar": "C F G",
-        "RCM Register": "A B BK BN BO BP BQ BR N R AL Q AK", "Month wise RCM vs 3B": "T", "RCM GL": "J L", "RCM vs 2B": "B E",
-        "ITC Register 2025-26": "E AX I L K AY", "ITC Register 2026-27": "E AX I L", "GSTR-2B Apr25-Aug26": "B F AD AE AM Z AB",
-        "2B ISD Apr25-Aug26": "B E R S", "GSTR-2B ITC Data": "D K I", "T6A1 Extract - 24-25": "L M", "ITC Summary": "BS DT DU",
-        "ITCR vs 3B Net ITC": "AJ", "RCM Paid vs ITC Claimed": "M", "2B ISD Data": "C F", "LY 24-25 claims": "D"}
+        "RCM Register": "A N R AL", "Month wise RCM vs 3B": "T", "RCM GL": "J L", "RCM vs 2B": "B E",
+        "ITC Register 2025-26": "E AX I L", "ITC Register 2026-27": "E AX I L", "GSTR-2B Apr25-Aug26": "B F AD AE AM Z AB",
+        "2B ISD Apr25-Aug26": "B E R S", "GSTR-2B ITC Data": "D K", "T6A1 Extract - 24-25": "L",         "ITCR vs 3B Net ITC": "AJ", "RCM Paid vs ITC Claimed": "M", "2B ISD Data": "C F", "LY 24-25 claims": "D"}
+# 23-09 TRAP: only PURE date columns - invoice/reference numbers, amounts and mixed RCM ToS columns were hit once and reverted (dates_revert_nondate.py)
 FMT = "dd-mm-yy"
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:

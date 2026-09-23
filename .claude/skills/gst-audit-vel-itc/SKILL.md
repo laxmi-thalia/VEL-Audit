@@ -444,3 +444,8 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   Trigger: T6A1 Extract 'Invoice Date' was mm-dd-yy, so 6 Mar 2025 read as 03-06-25. Values/formulas unchanged.
 - Runner after a cascade when the master gets locked mid-chain: chain5b.sh = t6a1_2b_period -> fy2627_reco -> remarks_mirror ->
   dates_ddmmyy. TRAP: TaskStop/kill of the chain runner does not stop the running python/COM step - wait for it, then restore.
+
+- 23-09 TRAP (cost a revert): the dd-mm-yy pass was driven by the format survey, which flagged any column holding a few date-formatted
+  cells - Invoice No. (register K, 2B base I, extract M), RCM Reference/Inv. No. and three ITC Summary amount columns got a date format;
+  numeric invoice numbers then read as #VALUE! in openpyxl and showed as dates/#### in Excel. Restored from the snapshot
+  (dates_revert_nondate.py); dates_ddmmyy.py now lists pure date columns only. Values/formulas were never affected (0 error cells).
