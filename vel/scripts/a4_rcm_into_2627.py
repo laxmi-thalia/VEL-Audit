@@ -68,6 +68,7 @@ try:
     xl.Calculation = -4105; xl.CalculateFullRebuild()
     e = 0
     for sh in w.Worksheets:
+        if sh.Name == "T6A1 Extract - 24-25": continue   # its 2B row pointers are #REF! until cascade_fix rebuilds the extract
         try: e += sh.UsedRange.SpecialCells(-4123, 16).Count
         except Exception: pass
     t13_after = [round(sum(isum.Cells(rr, c).Value or 0 for rr in gst_rows), 2) for c in (CI("CH"), CI("CI"), CI("CJ"))]

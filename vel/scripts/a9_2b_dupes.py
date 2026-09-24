@@ -59,10 +59,14 @@ try:
         for i, _, _ in sorted(kill, reverse=True): ws.Rows(i).Delete()
         print("%s: deleted %d rows, last row now %d" % (sheet, len(kill), ws.Cells(ws.Rows.Count, 1).End(-4162).Row))
     xl.Calculation = -4105; xl.CalculateFullRebuild()
-    e = 0
+    e = 0; e_ext = 0
     for sh in w.Worksheets:
-        try: e += sh.UsedRange.SpecialCells(-4123, 16).Count
+        try:
+            k = sh.UsedRange.SpecialCells(-4123, 16).Count
+            if sh.Name == "T6A1 Extract - 24-25": e_ext += k   # direct row pointers into the 2B sheet; cascade_fix rebuilds them
+            else: e += k
         except Exception: pass
+    print("error cells outside the T6A1 extract %d | extract pointer cells now #REF! %d (rebuilt by the chain)" % (e, e_ext))
     t_after = tie(); tot_after = round(sum(n(v) for v in col("2B_Total GST")), 2)
     b2 = w.Worksheets("GSTR-2B Apr25-Aug26"); BH = {b2.Cells(2, c).Value: c for c in range(1, 70) if b2.Cells(2, c).Value}; NB = b2.Cells(b2.Rows.Count, 1).End(-4162).Row
     rem = [v[0] for v in b2.Range(b2.Cells(3, BH["Reco Remarks"]), b2.Cells(NB, BH["Reco Remarks"])).Value]

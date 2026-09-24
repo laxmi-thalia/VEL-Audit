@@ -456,3 +456,31 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   and the snapshot taken before that save open fine. Fix: restore the snapshot and re-apply formats as plain `NumberFormat`
   string writes (dates_revert_nondate2.py). Never paste formats across workbooks; always re-open the saved file in a FRESH
   instance as the last step of any write. The broken file is kept as master2_UNOPENABLE_23-09_11-24.xlsx in the scratchpad.
+
+## Changes log - 2026-09-24: the 23-09 master changes A1..A17 / B3 applied (Pawan: "make the changes one by one")
+
+- Applied in this order, one COM session per script, master snapshot before each (`vel/scripts/`): a14_fy2627_dates (26-27 by
+  invoice DATE), a17_a15_summary, a2_a16_taxcomp, a13_a5_summary, a12_2b_claim_month, a9_2b_dupes, a4_rcm_into_2627,
+  a7_reco_sheet, a6_rcm_paid_vs_claimed, a3_t13_diff_remarks, then chain5.sh (cascade_fix -> final_countif_rule ->
+  t6a1_2b_period -> fy2627_reco -> remarks_mirror), then a7 again. Item statuses and figures: `vel/CHANGES-PENDING.md`.
+- Verified 09:00: 0 error cells, golden 1,06,99,69,542.15, '1 –' tie 58,16,03,159.31 / 9,43,18,133.79 / 9,43,18,133.79 on both
+  sheets, ITC Summary 6A1 blocks unchanged, fresh-instance open OK, xlsb exported. 73 sheets.
+- TRAP (claim month): `ITC Register 2025-26` `3B Claim  Month` holds the claim DATE - any day of the month - on 37,739 of
+  40,891 ITC lines and on every RCM line; `GSTR-2B Apr25-Aug26` `3B Claim Month` (AX) likewise. A SUMIFS criterion "= 1st of
+  month" silently misses them (A6's register-claims column read 0; A7 undercounted both sides). Always match a month as a
+  range: `">="&first, "<"&EDATE(first,1)`.
+- TRAP (client labels): the register's `2B Year` (AZ) is the client's own value column, not derived from the reco. It is blank
+  on 911 Consider lines the reco matched to FY 25-26 2B (8.93 cr IGST) and says 2025-26 on 63 lines matched to FY 24-25 2B.
+  Any sheet that splits by 2B year on that column inherits the gap (A7 block 1). Open: a document-level '2B Year (reco)'
+  value column from cascade_fix - needs Pawan's go.
+- TRAP (Excel RPC): a 2-minute CalculateFullRebuild can die with "The remote procedure call failed" (Excel process gone);
+  the script's `finally: xl.Quit()` then raises AttributeError. Nothing is saved by that run - check the master mtime against
+  the last "saved" line, restore nothing, re-run.
+- Verification guards: while the 2B sheets have rows deleted and cascade_fix has not yet rebuilt the extract, the
+  'T6A1 Extract - 24-25' sheet's direct row pointers are #REF!; every write script's error count skips that sheet only.
+- Re-run safety: a6 keeps the CA's original as "(old)" and on re-run deletes its OWN previous rebuild, never the "(old)";
+  a7's sheet is only ever written by the script, so re-run deletes and rebuilds it.
+- A1 count: 307 is the pre-consolidation line-level verdict count; the file carries remark 3 on 138 Consider lines
+  (64 books wrong by check digit, 74 differ both valid, 0 2B wrong). Quote the consolidated figure to the CA.
+- 2B dedupe (A9): 59 rows removed (48 originals superseded by a 'Yes (Revised)' amendment, 11 identical repeats); register
+  2B_ total 88,92,33,586.29 -> 88,37,45,919.39; tie unchanged.

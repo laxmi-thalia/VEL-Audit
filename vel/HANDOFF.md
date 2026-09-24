@@ -51,3 +51,12 @@ with every ruling the CAs / Pawan gave. This file is only the current state and 
 session per script, log to chain4.log) → verify (0 errors, golden, Net-ITC 0.00, 6A1 blocks) → export xlsb. Snapshot the master
 first. Never insert rows at the first data row (row 6) — ranges that start at $6 shift; insert inside the range and delete the old
 rows. Never insert columns before existing ones on ITC Register 2026-27 (ITC Summary reads it by letter) — append after the last header.
+
+## 24-09-2026: 23-09 change list applied (A1..A17 except A10 on hold and B1 open; B3 done)
+
+State after the 08:38-09:00 job: 0 error cells, golden 1,06,99,69,542.15, tie holds on both sheets, 73 sheets, xlsb exported.
+Per-item status and figures: `vel/CHANGES-PENDING.md`. Scripts: `vel/scripts/a*.py`, runner `post13.sh`, chain `chain5.sh`.
+Open for Pawan: (1) '2B Year (reco)' document-level column so A7's ITCR side does not depend on the client's blank labels;
+(2) the four "as per 2B" columns for remark-9 lines; (3) A10 ISD reco (4A(4) on ITC Summary AE:AG is 2x the filed 3B - check
+the formulas first); (4) SIX_ITC_ONLY (Table 6A1 double count) still held; (5) RCM ToS & Interest sheet, tax-rate rounding, STO
+blank-GSTIN lines, freezing 2B remarks to values. Month criteria must be ranges (claim columns hold dates, any day).

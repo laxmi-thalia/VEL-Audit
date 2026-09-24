@@ -6,7 +6,7 @@ One row per GSTIN x PAID month M (Apr-25..Mar-26). Columns:
   E:H  RCM paid per RCM Register (Final 3B Month = M): Taxable / IGST / CGST / SGST  (SAP figures)
   I:L  RCM liability per filed GSTR-3B Table 3.1(d), month M: Taxable / IGST / CGST / SGST
   M:O  ITC claimed per filed GSTR-3B Table 4A(3), month M+1: IGST / CGST / SGST
-  P:S  ITC claimed per ITC Register RCM lines (3B Claim Month = M+1): Taxable / IGST / CGST / SGST
+  P:S  ITC claimed per ITC Register RCM lines (3B Claim Month inside M+1 - the register holds the claim DATE, any day): Taxable / IGST / CGST / SGST
   T:W  Difference, RCM paid (register) minus 4A(3) claimed in M+1: IGST / CGST / SGST / Total
   X    DPS Remarks (values, carried over from the old sheet by GSTIN + month)
 Live SUMIFS throughout; SUBTOTAL totals on row 5; the old sheet is kept renamed '(old)' for one round of review."""
@@ -42,9 +42,9 @@ print("old remarks kept: %d | RCM Register rows 6..%d | register rows 6..%d | 3B
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:
     t0 = time.time(); w = xl.Workbooks.Open(P); xl.Calculation = -4135
-    for sh in w.Worksheets:
-        if sh.Name == NAME + " (old)": sh.Delete()
-    w.Worksheets(NAME).Name = NAME + " (old)"
+    names = [sh.Name for sh in w.Worksheets]
+    if NAME + " (old)" in names: w.Worksheets(NAME).Delete()   # re-run: drop my own earlier rebuild; the CA's original stays as "(old)"
+    else: w.Worksheets(NAME).Name = NAME + " (old)"
     ws = w.Worksheets.Add(After=w.Worksheets(NAME + " (old)")); ws.Name = NAME
     ws.Cells(2, 1).Value = "VIKRAN ENGINEERING LIMITED"; ws.Cells(2, 1).Font.Bold = True
     ws.Cells(3, 1).Value = ("RCM paid in month M (RCM Register / GSTR-3B 3.1(d)) vs RCM ITC claimed in month M+1 (GSTR-3B 4A(3) / ITC Register RCM lines). "
@@ -71,7 +71,7 @@ try:
                 ws.Cells(r, 13 + j).Formula = "=IF($D%d>DATE(2026,3,1),\"(next FY)\",SUMIFS(%s,%s,$A%d,%s,TEXT($D%d,\"mmm-yy\")))" % (r, D(col), D("B"), r, D("C"), r)
             G = lambda h: "'ITC Register 2025-26'!$%s$6:$%s$%d" % (rc(h), rc(h), RGN)
             for j, h in enumerate(("Taxable Value", "IGST", "CGST", "SGST")):
-                ws.Cells(r, 16 + j).Formula = "=SUMIFS(%s,%s,$A%d,%s,$D%d,%s,\"RCM\")" % (G(h), G("VEL GSTIN"), r, G("3B Claim  Month"), r, G("Category"))
+                ws.Cells(r, 16 + j).Formula = "=SUMIFS(%s,%s,$A%d,%s,\">=\"&$D%d,%s,\"<\"&EDATE($D%d,1),%s,\"RCM\")" % (G(h), G("VEL GSTIN"), r, G("3B Claim  Month"), r, G("3B Claim  Month"), r, G("Category"))
             for j in range(3):
                 ws.Cells(r, 20 + j).Formula = "=IF(ISNUMBER(%s%d),%s%d-%s%d,\"\")" % (L(13 + j), r, L(6 + j), r, L(13 + j), r)
             ws.Cells(r, 23).Formula = "=IF(ISNUMBER(T%d),SUM(T%d:V%d),\"\")" % (r, r, r)
@@ -88,6 +88,7 @@ try:
     xl.Calculation = -4105; xl.CalculateFullRebuild()
     e = 0
     for sh in w.Worksheets:
+        if sh.Name == "T6A1 Extract - 24-25": continue   # its 2B row pointers are #REF! until cascade_fix rebuilds the extract
         try: e += sh.UsedRange.SpecialCells(-4123, 16).Count
         except Exception: pass
     tot = lambda cols: [round(ws.Cells(5, c).Value or 0, 2) for c in cols]

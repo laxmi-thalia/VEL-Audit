@@ -29,7 +29,7 @@ st_of = {g: s for s, g in states}
 reg = wb["ITC Register 2025-26"]; H = {c.value: i for i, c in enumerate(next(reg.iter_rows(min_row=5, max_row=5))) if c.value}
 b2 = wb["GSTR-2B Apr25-Aug26"]; BH = {c.value: i for i, c in enumerate(next(b2.iter_rows(min_row=2, max_row=2))) if c.value}; NB = 2
 od = wb["GSTR-2B ITC Data"]; OH = {c.value: i for i, c in enumerate(next(od.iter_rows(min_row=5, max_row=5))) if c.value}; NO = 5
-pairs = {"2025-26": set(), "2024-25": set()}; blank_2b_year = collections.Counter()
+pairs = {"2025-26": set(), "2024-25": set()}; blank_2b_year = collections.Counter(); claimed_ly = collections.Counter()
 mon = lambda v: dt.datetime(v.year, v.month, 1) if isinstance(v, dt.datetime) else None
 RN = 5
 for x in reg.iter_rows(min_row=6, values_only=True):
@@ -48,46 +48,46 @@ for x in b2.iter_rows(min_row=3, values_only=True):
 for x in od.iter_rows(min_row=6, values_only=True):
     if not x[0]: continue
     NO += 1
-    if S(x[OH["Supply Attract Reverse"]]) == "No" and S(x[OH["ITC Availability"]]) == "Yes":
+    if S(x[OH["Supply Attract Reverse Charge"]]) == "N" and S(x[OH["ITC Availability"]]) == "Y":
         m = mon(x[OH["GSTR 3B Month"]])
-        if m: pairs["2024-25"].add((S(x[OH["State folder"]]), m))
+        if m and m >= dt.datetime(2025, 4, 1): pairs["2024-25"].add((S(x[OH["State folder"]]), m))
+        elif m: claimed_ly[S(x[OH["State folder"]])] += n(x[OH["Integrated Tax(₹)"]]) + n(x[OH["Central Tax(₹)"]]) + n(x[OH["State/UT Tax(₹)"]])
 wb.close()
-print("register rows %d | 2B rows %d | 2B base rows %d | pairs: 25-26 %d, 24-25 %d | register lines with blank 2B Year: %d states, tax %.2f" % (RN - 5, NB - 2, NO - 5, len(pairs["2025-26"]), len(pairs["2024-25"]), len(blank_2b_year), sum(blank_2b_year.values())))
+print("register rows %d | 2B rows %d | 2B base rows %d | pairs: 25-26 %d, 24-25 %d | register lines with blank 2B Year: %d states, tax %.2f | FY 24-25 2B claimed in FY 24-25 (excluded from block 2): tax %.2f" % (RN - 5, NB - 2, NO - 5, len(pairs["2025-26"]), len(pairs["2024-25"]), len(blank_2b_year), sum(blank_2b_year.values()), sum(claimed_ly.values())))
 c = lambda h: L(H[h] + 1); bc = lambda h: L(BH[h] + 1); oc = lambda h: L(OH[h] + 1)
+def MR(sheet, cl, first, last, ref):
+    """month-range criteria pair: the claim column holds the claim DATE (any day), so match >= 1st and < next 1st"""
+    rg = "'%s'!$%s$%d:$%s$%d" % (sheet, cl, first, cl, last)
+    return '%s,">="&%s,%s,"<"&EDATE(%s,1)' % (rg, ref, rg, ref)
 def reg_f(col, yr, r):
-    return ("=SUMIFS('ITC Register 2025-26'!$%s$6:$%s$%d,'ITC Register 2025-26'!$%s$6:$%s$%d,$A%d,'ITC Register 2025-26'!$%s$6:$%s$%d,$B%d,"
-            "'ITC Register 2025-26'!$%s$6:$%s$%d,\"ITC\",'ITC Register 2025-26'!$%s$6:$%s$%d,\"%s\")"
-            % (c(col), c(col), RN, c("State Name"), c("State Name"), RN, r, c("3B Claim  Month"), c("3B Claim  Month"), RN, r,
-               c("Category"), c("Category"), RN, c("2B Year"), c("2B Year"), RN, yr))
+    RG = lambda h: "'ITC Register 2025-26'!$%s$6:$%s$%d" % (c(h), c(h), RN)
+    return '=SUMIFS(%s,%s,$A%d,%s,%s,"ITC",%s,"%s")' % (RG(col), RG("State Name"), r, MR("ITC Register 2025-26", c("3B Claim  Month"), 6, RN, "$B%d" % r), RG("Category"), RG("2B Year"), yr)
 def b2_f(col, r):
-    return ("=SUMIFS('GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,INDEX('ITC Summary'!$C$6:$C$40,MATCH($A%d,'ITC Summary'!$A$6:$A$40,0)),"
-            "'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,$B%d,'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,\"No\",'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,\"Yes\",'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d,\"2025-26\")"
-            % (bc(col), bc(col), NB, bc("Company GSTIN"), bc("Company GSTIN"), NB, r, bc("3B Claim Month"), bc("3B Claim Month"), NB, r,
-               bc("Reverse Charge"), bc("Reverse Charge"), NB, bc("ITC Eligible"), bc("ITC Eligible"), NB, bc("FY (2B period)"), bc("FY (2B period)"), NB))
+    RG = lambda h: "'GSTR-2B Apr25-Aug26'!$%s$3:$%s$%d" % (bc(h), bc(h), NB)
+    return ('=SUMIFS(%s,%s,INDEX(\'ITC Summary\'!$C$6:$C$40,MATCH($A%d,\'ITC Summary\'!$A$6:$A$40,0)),%s,%s,"No",%s,"Yes",%s,"2025-26")'
+            % (RG(col), RG("Company GSTIN"), r, MR("GSTR-2B Apr25-Aug26", bc("3B Claim Month"), 3, NB, "$B%d" % r), RG("Reverse Charge"), RG("ITC Eligible"), RG("FY (2B period)")))
 def od_f(col, r):
-    return ("=SUMIFS('GSTR-2B ITC Data'!$%s$6:$%s$%d,'GSTR-2B ITC Data'!$%s$6:$%s$%d,$A%d,'GSTR-2B ITC Data'!$%s$6:$%s$%d,$B%d,"
-            "'GSTR-2B ITC Data'!$%s$6:$%s$%d,\"No\",'GSTR-2B ITC Data'!$%s$6:$%s$%d,\"Yes\")"
-            % (oc(col), oc(col), NO, oc("State folder"), oc("State folder"), NO, r, oc("GSTR 3B Month"), oc("GSTR 3B Month"), NO, r,
-               oc("Supply Attract Reverse"), oc("Supply Attract Reverse"), NO, oc("ITC Availability"), oc("ITC Availability"), NO))
+    RG = lambda h: "'GSTR-2B ITC Data'!$%s$6:$%s$%d" % (oc(h), oc(h), NO)
+    return '=SUMIFS(%s,%s,$A%d,%s,%s,"N",%s,"Y")' % (RG(col), RG("State folder"), r, MR("GSTR-2B ITC Data", oc("GSTR 3B Month"), 6, NO, "$B%d" % r), RG("Supply Attract Reverse Charge"), RG("ITC Availability"))
 pythoncom.CoInitialize(); xl = win32.DispatchEx("Excel.Application"); xl.Visible = False; xl.DisplayAlerts = False
 try:
     t0 = time.time(); w = xl.Workbooks.Open(P); xl.Calculation = -4135
     for sh in w.Worksheets:
-        if sh.Name == NAME: sh.Name = NAME + " (old)"
+        if sh.Name == NAME: sh.Delete()   # A7 sheet only ever written by this script
     ws = w.Worksheets.Add(After=w.Worksheets("ITC Register 2026-27")); ws.Name = NAME
     ws.Cells(1, 1).Value = "RECO Format – ITC Register FY 25-26 vs GSTR-2B, matched on the GSTR-3B claim month (A7, Pawan 23-09). Live formulas."; ws.Cells(1, 1).Font.Bold = True
     dark, blue, white = 0x4F3F33, 0xB09784, 0xFFFFFF
     def head(r, col, txt, fill):
         x = ws.Cells(r, col); x.Value = txt; x.Font.Bold = True; x.Font.Color = white; x.Interior.Color = fill
-    row = 3
-    for yr, side_lbl, right_f, right_src in (("2025-26", "FY 2025-26", b2_f, "GSTR-2B Apr25-Aug26"), ("2024-25", "FY 2024-25", od_f, "GSTR-2B ITC Data")):
+    row = 3; tot_rows = []
+    for yr, side_lbl, right_f, right_src, NO_, YES_ in (("2025-26", "FY 2025-26", b2_f, "GSTR-2B Apr25-Aug26", "No", "Yes"), ("2024-25", "FY 2024-25", od_f, "GSTR-2B ITC Data", "N", "Y")):
         ws.Cells(row, 1).Value = "2B Year (Column AZ)"; ws.Cells(row, 2).Value = side_lbl; ws.Cells(row, 7).Value = "2B Year"; ws.Cells(row, 8).Value = side_lbl
-        ws.Cells(row + 1, 1).Value = "Category"; ws.Cells(row + 1, 2).Value = "ITC"; ws.Cells(row + 1, 7).Value = "Reverse Charge"; ws.Cells(row + 1, 8).Value = "No"
-        ws.Cells(row + 2, 7).Value = "ITC available"; ws.Cells(row + 2, 8).Value = "Yes"; ws.Cells(row + 2, 1).Value = "Source"; ws.Cells(row + 2, 2).Value = "ITC Register 2025-26"; ws.Cells(row + 2, 9).Value = right_src
+        ws.Cells(row + 1, 1).Value = "Category"; ws.Cells(row + 1, 2).Value = "ITC"; ws.Cells(row + 1, 7).Value = "Reverse Charge"; ws.Cells(row + 1, 8).Value = NO_
+        ws.Cells(row + 2, 7).Value = "ITC available"; ws.Cells(row + 2, 8).Value = YES_; ws.Cells(row + 2, 1).Value = "Source"; ws.Cells(row + 2, 2).Value = "ITC Register 2025-26"; ws.Cells(row + 2, 9).Value = right_src
         ws.Cells(row + 3, 1).Value = "ITCR"; ws.Cells(row + 3, 7).Value = "GSTR-2B"; ws.Cells(row + 3, 13).Value = "Difference (ITCR – 2B)"
         for j, h in enumerate(("State", "3B Month", "IGST", "CGST", "SGST")): head(row + 4, 1 + j, h, dark); head(row + 4, 7 + j, h, dark)
         for j, h in enumerate(("IGST", "CGST", "SGST", "Total")): head(row + 4, 13 + j, h, blue)
-        keys = sorted(pairs[yr], key=lambda t: (t[0], t[1])); r0 = row + 5
+        keys = sorted(pairs[yr], key=lambda t: (t[0], t[1])); r0 = row + 5; tot_rows.append(row + 3)
         vals = [[st, ser(m), None, None, None] for st, m in keys]
         if vals: ws.Range(ws.Cells(r0, 1), ws.Cells(r0 + len(vals) - 1, 5)).Value = vals; ws.Range(ws.Cells(r0, 7), ws.Cells(r0 + len(vals) - 1, 8)).Value = [[st, ser(m)] for st, m in keys]
         for i, (st, m) in enumerate(keys):
@@ -104,6 +104,10 @@ try:
         for col in (3, 4, 5, 9, 10, 11, 13, 14, 15, 16): ws.Range(ws.Cells(r0, col), ws.Cells(rl, col)).NumberFormat = "#,##0.00"
         ws.Range(ws.Cells(row + 4, 1), ws.Cells(rl, 16)).AutoFilter()
         row = rl + 4
+    if claimed_ly:
+        ws.Cells(row, 1).Value = "FY 24-25 2B documents whose GSTR-3B claim month falls in FY 24-25 itself are NOT in block 2 (they belong to the FY 24-25 audit) – total tax by state"; ws.Cells(row, 1).Font.Italic = True
+        for i, (st, t) in enumerate(sorted(claimed_ly.items()), 1): ws.Cells(row + i, 1).Value = st; ws.Cells(row + i, 3).Value = round(t, 2); ws.Cells(row + i, 3).NumberFormat = "#,##0.00"
+        row += len(claimed_ly) + 3
     if blank_2b_year:
         ws.Cells(row, 1).Value = "Register ITC lines with a BLANK '2B Year' (not in either block) – total tax by state"; ws.Cells(row, 1).Font.Italic = True
         for i, (st, t) in enumerate(sorted(blank_2b_year.items()), 1): ws.Cells(row + i, 1).Value = st; ws.Cells(row + i, 3).Value = round(t, 2); ws.Cells(row + i, 3).NumberFormat = "#,##0.00"
@@ -113,11 +117,12 @@ try:
     xl.Calculation = -4105; xl.CalculateFullRebuild()
     e = 0
     for sh in w.Worksheets:
+        if sh.Name == "T6A1 Extract - 24-25": continue   # its 2B row pointers are #REF! until cascade_fix rebuilds the extract
         try: e += sh.UsedRange.SpecialCells(-4123, 16).Count
         except Exception: pass
     tot = lambda r, cols: [round(ws.Cells(r, cc).Value or 0, 2) for cc in cols]
     print("block 1 (25-26) totals ITCR %s | 2B %s | diff %s" % (tot(6, (3, 4, 5)), tot(6, (9, 10, 11)), tot(6, (13, 14, 15))))
-    r2 = 3 + 5 + len(pairs["2025-26"]) + 4 + 3
+    r2 = tot_rows[1]
     print("block 2 (24-25) totals ITCR %s | 2B %s | diff %s" % (tot(r2, (3, 4, 5)), tot(r2, (9, 10, 11)), tot(r2, (13, 14, 15))))
     print("error cells %d | golden %.2f" % (e, w.Worksheets("ITC Register 2025-26").Range("V4").Value))
     assert e == 0 and abs(w.Worksheets("ITC Register 2025-26").Range("V4").Value - 1069969542.15) < 0.01
