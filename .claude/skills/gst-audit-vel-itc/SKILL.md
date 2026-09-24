@@ -484,3 +484,6 @@ FY 24-25 lookup once). Pending: full Octa 2B report from Pawan -> re-merge + re-
   (64 books wrong by check digit, 74 differ both valid, 0 2B wrong). Quote the consolidated figure to the CA.
 - 2B dedupe (A9): 59 rows removed (48 originals superseded by a 'Yes (Revised)' amendment, 11 identical repeats); register
   2B_ total 88,92,33,586.29 -> 88,37,45,919.39; tie unchanged.
+- B3 on the 2B side (b3_2b_date_keys.py): the sheet KEY formula must test `LEFT(CELL("format",cell),1)="D"`, NOT ISNUMBER -
+  2,276 FY 24-25 2B invoice numbers are plain integers and ISNUMBER turned them into 1900 dates (477 error cells, caught by
+  the guard, nothing saved). cascade_fix applies inv_text on both 2B sides too.

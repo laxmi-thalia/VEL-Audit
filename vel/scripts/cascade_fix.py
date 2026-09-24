@@ -35,12 +35,14 @@ g = lambda r, h: r[RH[h] - 1]
 b2 = wb["GSTR-2B Apr25-Aug26"]; BH = {S(b2.cell(2, c).value): c for c in range(1, b2.max_column + 1)}
 B = [r for r in b2.iter_rows(min_row=3, values_only=True) if r[0]]; NB = 2 + len(B)
 bg = lambda r, h: r[BH[h] - 1]
+import datetime as _dt
+def inv_text(v): return ("%d/%s" % (v.month, str(v.year)[2:])) if isinstance(v, _dt.datetime) else v   # B3: a date-typed invoice number keys as M/YY on either side
 ob = wb["GSTR-2B ITC Data"]; OH = {S(ob.cell(5, c).value): c for c in range(1, ob.max_column + 1)}
 o_z = collections.defaultdict(list); o_dt = collections.defaultdict(list)
 for r in ob.iter_rows(min_row=6, values_only=True):
     if not r or not r[0] or S(r[OH["FY (derived)"] - 1]) != "2024-25": continue
     vg = S(r[OH["GSTIN of supplier"] - 1]).upper(); tot = round(num(r[OH["Integrated Tax(₹)"] - 1]) + num(r[OH["Central Tax(₹)"] - 1]) + num(r[OH["State/UT Tax(₹)"] - 1]), 2)
-    o_z[vg + zkey(r[OH["Invoice number"] - 1])].append(1)
+    o_z[vg + zkey(inv_text(r[OH["Invoice number"] - 1]))].append(1)
     d = r[OH["Invoice Date"] - 1]
     if isinstance(d, dt.datetime): o_dt[(vg, d.date(), tot)].append(1)
 wb.close(); print("loaded %.0fs | register %d | 2B %d" % (time.time() - t0, N, len(B)))
@@ -49,13 +51,11 @@ import sys; sys.path.insert(0, r"C:\PROJECTS\gst-audit-engine")
 from vel.scripts.reco_lib import match_register
 # B3 (M1 23-09): an invoice number Excel turned into a date ("06/24-25" -> June 2025) has lost its text; the best we can do is
 # match it as month/year ("6/25" -> zkey 625, which also meets "06/25") and FLAG the line so the reviewer checks it.
-import datetime as _dt
-def inv_text(v): return ("%d/%s" % (v.month, str(v.year)[2:])) if isinstance(v, _dt.datetime) else v
 inv_is_date = [isinstance(g(r, "Invoice No."), _dt.datetime) for r in rows]
 reg_rows = [{"vendor_gstin": g(r, "Vendor GSTIN"), "invoice": inv_text(g(r, "Invoice No.")), "invoice_date": g(r, "Invoice Date"), "invoice_year": g(r, "Invoice Year"),
              "category": g(r, "Category"), "vel_gstin": g(r, "VEL GSTIN"), "igst": g(r, "IGST"), "cgst": g(r, "CGST"), "sgst": g(r, "SGST")} for r in rows]
-b2_rows = [{"supplier_gstin": bg(r, "Supplier GSTIN"), "doc_no": bg(r, "Doc No"), "doc_date": bg(r, "Doc Date"), "company_gstin": bg(r, "Company GSTIN"),
-            "key": S(bg(r, "Supplier GSTIN")).upper() + norm(bg(r, "Doc No")), "igst": bg(r, "IGST (Net)"), "cgst": bg(r, "CGST (Net)"), "sgst": bg(r, "SGST (Net)")} for r in B]
+b2_rows = [{"supplier_gstin": bg(r, "Supplier GSTIN"), "doc_no": inv_text(bg(r, "Doc No")), "doc_date": bg(r, "Doc Date"), "company_gstin": bg(r, "Company GSTIN"),
+            "key": S(bg(r, "Supplier GSTIN")).upper() + norm(inv_text(bg(r, "Doc No"))), "igst": bg(r, "IGST (Net)"), "cgst": bg(r, "CGST (Net)"), "sgst": bg(r, "SGST (Net)")} for r in B]
 out = match_register(reg_rows, b2_rows, set(o_z), set(o_dt))
 verdict = [o["verdict"] for o in out]; key2 = [o["key2"] for o in out]
 DATE_FLAG = " – invoice no. is a DATE in the books, verify"
