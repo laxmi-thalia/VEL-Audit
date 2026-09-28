@@ -120,3 +120,10 @@ Transcripts in `C:\PROJECTS\accountic\reports\meeting-2026-09-23-*.md`.
   FY 26-27 rows (2.40 cr) outside this year's 3B. Script c2_isd_vs_3b.py.
 - Open: `2B Period` (AQ) still looks only at `GSTR-2B Apr25-Aug26`, so remark-9 lines (FY 24-25 2B) show no reco period and
   their `2B Year` falls back to the client columns (63 say 2025-26). Extending AQ to the FY 24-25 2B sheet needs a go.
+- [x] **C3 remarks on Not-consider lines (Rashid, supersedes Pawan 22-09 'Consider line only')** - every Not-consider line
+  now carries its document's Consider-line remark as a VALUE (same text, so a remark filter shows the whole document); 34,061
+  lines filled (1: 26,267 / 10: 3,941 / 4: 2,298 / 9: 755 / 6: 330 / 5: 287 / 3: 169 / 7: 11 / 14: 2 / 15: 1). KEY2 and the
+  B_/2B_/D_ blocks untouched. cascade_fix.consolidate() still blanks them - update it before any re-run. c3_remarks_not_consider.py.
+  TRAP (cost 45 min CPU, killed): the 2B sheet's remark lookups depend on Reco Remarks - writing in thousands of small runs with
+  automatic calculation recalculates the workbook after each write. Manual calculation, one column write, one Calculate.
+- [x] **C4** `GSTR 2B/6A Period` (AY) displays dd-mm-yy, no time (format only). c4_period_date_only.py.
