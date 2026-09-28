@@ -101,3 +101,22 @@ Transcripts in `C:\PROJECTS\accountic\reports\meeting-2026-09-23-*.md`.
 | 24-09-2026 | B3 | Pawan: the 8 date-typed invoice numbers on 'GSTR-2B ITC Data' rewritten as TEXT in the same dd-mm-yyyy form (b3_2b_dates_as_text.py); no longer date values, Reason flag kept, keys now the digits of that text on the sheet and in cascade_fix alike. 0 error cells, golden, xlsb exported. |
 | 24-09-2026 | A16 | Pawan: Tax comp report block headings S6 / V6 renamed to LY wording 'Difference to be added to 4D1' / 'Difference in GSTR-2B Amounts glitch-4A5' (taxcomp_headings_4d1_4a5.py). Y6 / AB6 kept ('(Short)/ Excess reported in GSTR-1' / 'Short/ (Excess) reporting of ITC'). Headings only. |
 | 24-09-2026 | A16 | Pawan: the four difference blocks S:AD on Tax comp report are now LIVE (taxcomp_blocks_live.py): each cell = the row's own L/M/N difference when the Reasons text names that block for that head, 0 otherwise (zeros hidden); 52 formulas, 4 split values (rows 117, 122, 134: two reasons on one head - smaller quoted amount typed with a comment, the other block carries the live remainder); row-5 totals SUBTOTAL. Every cell within Rs 1 of the typed value, 0 error cells, golden. The blocks return 0 not "" because AE:AG subtract them ("" gave 615 #VALUE! cells on the first attempt, caught, not saved). |
+
+## 2026-09-28 (Rashid) - on `VEL_GST_Audit_FY2025-26_MASTER (2) (1) (1).xlsb` (the CA's copy with manual remarks; xlsb edited directly via COM)
+
+- [x] **C1 `2B Year` (ITC Register 2025-26, AZ)** - live formula per line: FY of `2B Period` (AQ, reco) -> FY of the client's
+  `GSTR 2B/6A Period` (AY) when it is a date -> the client's old value as literal. Result: 2025-26 39,496 / 2024-25 1,684 /
+  2026-27 7 / blank 3,123 (no period anywhere). Filled 1,487 from the reco period + 5,890 from the client period; corrected
+  216 (2025-26 -> 2024-25), 99 (2024-25 -> 2025-26), 6 (-> 2026-27). Scripts c1_2b_year.py + c1b_2b_year_fallback.py.
+  TRAP: the sheet had an AutoFilter with most rows hidden - End(xlUp) stopped at row 2,827 and an array write skipped the hidden
+  rows (row 12's formula landed on row 2827). Restored from snapshot; scripts now take the bound from UsedRange, ShowAllData,
+  unhide, and assert every formula references its own row before saving.
+- [x] **C2 `2B ISD vs 3B 4A(4)`** - new sheet after `ITCR vs 3B Net ITC`: 228 GSTIN-months mirroring `3B Data`; 2B ISD by
+  SUMIFS over `2B ISD Apr25-Aug26` (Company GSTIN + Tax Period month range), 3B 4A(4) by SUMIFS over `3B Data` (GSTIN + Month
+  text), Diff = 2B - 3B, cumulative diff within GSTIN, live remarks, DPS Remarks column, per-GSTIN block at U:Z, SUBTOTAL row 4.
+  FY 25-26: 2B ISD 11,12,33,397 vs 3B 11,18,13,779, diff -5,80,382; 200 months Matched, 28 '3B more than 2B'
+  (Telangana -5,15,200, TN -40,359, WB -19,410, KL -3,555, JH -1,856) - TN/TG/WB/KL have no FY 25-26 Octa 2B export, note on A2.
+  `2B ISD Data` (143 rows, 18:30-shifted periods) is the same FY 25-26 document set as the Octa sheet; the Octa sheet also holds 73
+  FY 26-27 rows (2.40 cr) outside this year's 3B. Script c2_isd_vs_3b.py.
+- Open: `2B Period` (AQ) still looks only at `GSTR-2B Apr25-Aug26`, so remark-9 lines (FY 24-25 2B) show no reco period and
+  their `2B Year` falls back to the client columns (63 say 2025-26). Extending AQ to the FY 24-25 2B sheet needs a go.
